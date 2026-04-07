@@ -1,0 +1,23 @@
+# =============================================================================
+# Local-DDx v10 Configuration
+# =============================================================================
+#
+# Default configuration uses Qwen 2.5 32B for high-quality diagnosis.
+# Model can also be changed via the Gradio UI dropdown.
+# =============================================================================
+
+conservative_model:
+  name: "Conservative"
+  model_name: "qwen2.5:32b-instruct-q8_0"
+  temperature: 0.3
+  top_p: 0.7
+  max_tokens: 1024
+  role: "conservative"
+
+innovative_model:
+  name: "Innovative"
+  model_name: "qwen2.5:32b-instruct-q8_0"
+  temperature: 0.8
+  top_p: 0.95
+  max_tokens: 1024
+  role: "innovative"
