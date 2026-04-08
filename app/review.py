@@ -558,16 +558,16 @@ def review_page():
                         alias_str = ', '.join(deduped) if deduped else '—'
 
                         with ui.column().classes('w-full gap-1 review-row'):
-                            with ui.row().classes('w-full items-start gap-3'):
-                                with ui.column().classes('flex-grow gap-0'):
-                                    ui.label(canonical).style(
-                                        'color: #e0e0e0; font-weight: 600; font-size: 13px;'
-                                    )
-                                    ui.label(f'Aliases: {alias_str}').style(
-                                        'color: #666688; font-size: 11px;'
-                                    )
-                                add_input = ui.input(placeholder='+ add alias').style('min-width: 140px;')
-                                flag_input = ui.input(placeholder='Flag issue').style('min-width: 120px;')
+                            ui.label(canonical).style(
+                                'color: #e0e0e0; font-weight: 600; font-size: 13px;'
+                            )
+                            ui.label(f'Aliases: {alias_str}').style(
+                                'color: #666688; font-size: 11px; '
+                                'overflow-wrap: break-word; word-break: break-word;'
+                            )
+                            with ui.row().classes('w-full gap-3').style('margin-top: 4px;'):
+                                add_input = ui.input(placeholder='+ add alias').classes('flex-grow')
+                                flag_input = ui.input(placeholder='Flag issue').classes('flex-grow')
 
                             others_containers[key] = ui.row().classes('w-full gap-1 flex-wrap').style('min-height: 0;')
 
