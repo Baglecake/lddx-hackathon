@@ -399,8 +399,9 @@ def review_page():
                 return
 
             # Failure verdicts
-            for case_id, gt, pipe in KNOWN_FAILURES:
-                key = f'fail_{case_id}_{gt}'
+            for item in REVIEW_MISMATCHES:
+                gt = item['ground_truth']
+                key = f'fail_{gt}'
                 if key in others_containers:
                     others = _fetch_others(
                         sb, state['classroom_id'], state['reviewer_id'],
@@ -488,28 +489,26 @@ def review_page():
                         key = f'fail_{gt}'
 
                         with ui.column().classes('w-full gap-1 review-row'):
-                            with ui.row().classes('w-full items-center gap-3'):
+                            with ui.row().classes('w-full items-center gap-2'):
                                 ui.label(f'{count}x').style(
                                     'color: #cc8844; font-weight: 700; min-width: 35px; font-size: 12px;'
                                 )
-                                with ui.column().classes('flex-grow gap-0'):
-                                    ui.label(gt).style(
-                                        'color: #e0e0e0; font-size: 13px; font-weight: 600;'
-                                    )
-                                    ui.label(f'Pipeline said: {pipe_examples}').style(
-                                        'color: #8888aa; font-size: 11px;'
-                                    )
-                                    ui.label(f'Cases: {cases} | Model: {sources}').style(
-                                        'color: #555577; font-size: 10px;'
-                                    )
-
+                                ui.label(gt).style(
+                                    'color: #e0e0e0; font-size: 13px; font-weight: 600;'
+                                )
+                            ui.label(f'Pipeline said: {pipe_examples}').style(
+                                'color: #8888aa; font-size: 11px; '
+                                'overflow-wrap: break-word; word-break: break-word;'
+                            )
+                            ui.label(f'Cases: {cases} | Model: {sources}').style(
+                                'color: #555577; font-size: 10px;'
+                            )
+                            with ui.row().classes('w-full gap-3').style('margin-top: 4px;'):
                                 verdict_select = ui.select(
                                     options={'': '—', 'match': 'Match', 'not_match': 'Not a match', 'unsure': 'Unsure'},
                                     value='',
                                 ).style('min-width: 130px;')
-                                comment_input = ui.input(placeholder='Synonym to add / comment').style(
-                                    'min-width: 160px;'
-                                )
+                                comment_input = ui.input(placeholder='Synonym to add / comment').classes('flex-grow')
 
                             others_containers[key] = ui.row().classes('w-full gap-1 flex-wrap').style('min-height: 0;')
 
