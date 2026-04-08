@@ -216,11 +216,17 @@ REVIEW_CSS = """
 def review_page():
     ui.html(REVIEW_CSS)
 
+    # Import nav from main app
+    from main import render_nav
+    render_nav(active='Review')
+
     sb = get_supabase()
     reviewer_state = {'id': None, 'name': None}
 
     # ---- Header ----
-    with ui.column().classes('w-full max-w-4xl mx-auto p-4 gap-0'):
+    with ui.column().classes('w-full max-w-4xl mx-auto p-4 gap-0').style(
+        'margin-top: 56px;'  # offset for fixed nav header
+    ):
         ui.html('''
             <div class="review-header">
                 <h1>LDDx Synonym Dictionary Review</h1>

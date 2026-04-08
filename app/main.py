@@ -382,13 +382,64 @@ CUSTOM_CSS = """
 """
 
 # ---------------------------------------------------------------------------
-# UI
+# Shared nav header
+# ---------------------------------------------------------------------------
+
+def render_nav(active: str = ''):
+    """Render the shared navigation header across all pages."""
+    with ui.header().classes('items-center justify-between px-6 py-3').style(
+        'background: #12122a; border-bottom: 1px solid #333355;'
+    ):
+        with ui.row().classes('items-center gap-6'):
+            ui.link('Local-DDx', '/').classes('text-xl font-bold no-underline').style(
+                'color: #4f8cff;'
+            )
+            for label, href in [('Pipeline', '/pipeline'), ('Review', '/review')]:
+                style = 'color: #ffffff; font-weight: 600;' if active == label else 'color: #8888aa;'
+                ui.link(label, href).classes('text-sm no-underline').style(style)
+
+
+# ---------------------------------------------------------------------------
+# Landing page
 # ---------------------------------------------------------------------------
 
 @ui.page('/')
-def index():
+def landing():
+    render_nav()
+    with ui.column().classes('w-full items-center justify-center').style(
+        'min-height: calc(100vh - 56px); background: #0f0f23;'
+    ):
+        with ui.column().classes('items-center gap-6 max-w-2xl p-8'):
+            ui.label('Local-DDx').classes('text-4xl font-bold').style('color: #4f8cff;')
+            ui.label('Multi-Agent Collaborative Differential Diagnosis').style(
+                'color: #8888aa; font-size: 16px; text-align: center;'
+            )
+            ui.label('Social Chain of Thought Pipeline').style(
+                'color: #666688; font-size: 14px; text-align: center; margin-top: -8px;'
+            )
+            ui.separator().style('border-color: #333355; width: 200px; margin: 12px 0;')
+            ui.label(
+                'HSIL Hackathon 2026 — Harvard School of Public Health'
+            ).style('color: #555577; font-size: 13px; text-align: center;')
+
+            with ui.row().classes('gap-4 mt-4'):
+                ui.button('Run Pipeline', icon='play_arrow', on_click=lambda: ui.navigate.to('/pipeline')).props(
+                    'size=lg color=primary'
+                )
+                ui.button('Synonym Review', icon='rate_review', on_click=lambda: ui.navigate.to('/review')).props(
+                    'size=lg flat'
+                ).style('color: #4ecdc4;')
+
+
+# ---------------------------------------------------------------------------
+# Pipeline page
+# ---------------------------------------------------------------------------
+
+@ui.page('/pipeline')
+def pipeline_page():
     # Inject custom CSS
     ui.html(CUSTOM_CSS)
+    render_nav(active='Pipeline')
 
     # -- State for this page --
     default_backend = os.environ.get('INFERENCE_BACKEND', 'ollama')
@@ -407,21 +458,10 @@ def index():
         models_list = {'value': list(ollama_models_cache['value'])}
     running = {'value': False}
 
-    # ============================
-    # Header
-    # ============================
-    with ui.header().classes('items-center justify-between px-6 py-3').style(
-        'background: #12122a; border-bottom: 1px solid #333355;'
-    ):
-        with ui.row().classes('items-center gap-3'):
-            ui.label('Local-DDx').classes('text-xl font-bold').style('color: #4f8cff;')
-            ui.label('Social Chain of Thought').classes('text-sm').style('color: #8888aa;')
-        with ui.row().classes('items-center gap-2'):
-            status_dot = ui.html(
-                '<span style="width:8px;height:8px;border-radius:50%;'
-                'background:#4ecdc4;display:inline-block;"></span>'
-            )
-            status_label = ui.label('Ready').classes('text-sm').style('color: #8888aa;')
+    # Status label in the page (not header)
+    status_label = ui.label('Ready').classes('text-sm').style(
+        'color: #8888aa; position: fixed; top: 14px; right: 24px; z-index: 100;'
+    )
 
     # ============================
     # Main layout
