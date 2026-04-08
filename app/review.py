@@ -1,31 +1,101 @@
 """
-Collaborative Synonym Review Page — /review
+Collaborative Synonym Review — /review
 
-Interactive review form backed by Supabase for real-time collaboration.
-Medical students can review synonym mappings, vote on known failures,
-and add missing terms.
+Classroom-based collaborative review tool backed by Supabase.
+Students join a classroom, review synonym mappings together,
+and see each other's contributions in real-time.
 """
 
 import os
 import sys
 import re
 import ast
-from typing import Dict, List, Tuple, Optional
+import random
+import string
+from typing import Dict, List, Tuple
 
 from nicegui import ui, app
 
-# Import Supabase client
 sys.path.insert(0, os.path.dirname(__file__))
 from supabase_client import get_supabase
+
+
+# ---------------------------------------------------------------------------
+# Category name cleanup map
+# ---------------------------------------------------------------------------
+
+CATEGORY_RENAMES = {
+    'Cardiovascular': 'Cardiovascular',
+    'Cardiovascular (extended)': 'Cardiovascular',
+    'Renal': 'Renal / Nephrology',
+    'Respiratory': 'Respiratory / Pulmonary',
+    'Endocrine': 'Endocrine / Metabolic',
+    'Hematology': 'Hematology / Oncology',
+    'Rheumatology': 'Rheumatology',
+    'Infectious': 'Infectious Disease',
+    'Infectious Disease': 'Infectious Disease',
+    'Neurology': 'Neurology',
+    'Neurology / Spine': 'Neurology',
+    'Gastroenterology': 'Gastroenterology / GI',
+    'Movement Disorders / Psychiatry': 'Psychiatry / Neurology',
+    'Headache': 'Neurology',
+    'Hypertension subtypes': 'Cardiovascular',
+    'Urological': 'Urology',
+    'Neonatal': 'Neonatal / Pediatric',
+    'Neonatal / Blood group': 'Neonatal / Pediatric',
+    'Thyroid': 'Endocrine / Metabolic',
+    'Oncology / Hematology (extended)': 'Hematology / Oncology',
+    'Other': 'General / Other',
+    'Vascular / Erectile': 'Cardiovascular',
+    'Epidural / Obstetric': 'Obstetrics / Anesthesia',
+    'Neuromuscular': 'Neurology',
+    'Overdose / Intoxication': 'Toxicology / Emergency',
+    'Microbiology / Infectious synonyms': 'Infectious Disease',
+    'Toxicology / Poisoning': 'Toxicology / Emergency',
+    'Surgical / Post-operative': 'Surgery / Post-operative',
+    'Reproductive / Gynecological': 'Obstetrics / Gynecology',
+    'Vestibular / ENT': 'ENT / Otolaryngology',
+    'GI / Abdominal': 'Gastroenterology / GI',
+    'Psychiatric': 'Psychiatry / Neurology',
+    'Psychiatric (additional)': 'Psychiatry / Neurology',
+    'Prostate': 'Urology',
+    'GI specifics': 'Gastroenterology / GI',
+    'Musculoskeletal': 'Musculoskeletal / Orthopedic',
+    'Hearing': 'ENT / Otolaryngology',
+    'Neck / Lymph': 'General / Other',
+    'Fracture matching': 'Musculoskeletal / Orthopedic',
+    'Infection categorical': 'Infectious Disease',
+    'Hepatitis': 'Gastroenterology / GI',
+    'Obesity subtypes (GT uses these)': 'Endocrine / Metabolic',
+    'Tuberculosis variants': 'Infectious Disease',
+    'Urinary': 'Urology',
+    'Pediatric / Congenital': 'Neonatal / Pediatric',
+    'Seizures': 'Neurology',
+    'Cardiac / Ischemia': 'Cardiovascular',
+    'Polyps': 'Gastroenterology / GI',
+}
+
+# Merge categories with the same clean name
+def _clean_categories(raw_cats):
+    merged = {}
+    for raw_name, entries in raw_cats.items():
+        clean = CATEGORY_RENAMES.get(raw_name, raw_name)
+        # Skip entries that are clearly code comments not medical categories
+        if any(w in clean.lower() for w in ['round ', 'zero-recall', 'additions', 'fixes', 'remaining']):
+            clean = 'General / Other'
+        if clean not in merged:
+            merged[clean] = []
+        merged[clean].extend(entries)
+    # Sort by category name
+    return dict(sorted(merged.items()))
+
 
 # ---------------------------------------------------------------------------
 # Load synonym data from evaluator source
 # ---------------------------------------------------------------------------
 
-def _load_synonym_data() -> Tuple[Dict[str, List[Tuple[str, List[str]]]], Dict[str, List[Tuple[str, List[str]]]]]:
-    """Parse synonym groups and hierarchies from the evaluator source."""
+def _load_synonym_data():
     evaluator_path = os.path.join(os.path.dirname(__file__), '..', 'benchmark', 'ddx_evaluator.py')
-
     if not os.path.exists(evaluator_path):
         return {}, {}
 
@@ -41,13 +111,10 @@ def _load_synonym_data() -> Tuple[Dict[str, List[Tuple[str, List[str]]]], Dict[s
     for i in range(start, len(src)):
         if src[i] == '{': depth += 1
         elif src[i] == '}': depth -= 1
-        if depth == 0:
-            end = i + 1
-            break
+        if depth == 0: end = i + 1; break
 
-    syn_str = re.sub(r'#[^\n]*', '', src[start:end])
     try:
-        synonyms = ast.literal_eval(syn_str)
+        synonyms = ast.literal_eval(re.sub(r'#[^\n]*', '', src[start:end]))
     except Exception:
         synonyms = {}
 
@@ -60,18 +127,15 @@ def _load_synonym_data() -> Tuple[Dict[str, List[Tuple[str, List[str]]]], Dict[s
         for i in range(h_start, len(src)):
             if src[i] == '{': depth += 1
             elif src[i] == '}': depth -= 1
-            if depth == 0:
-                h_end = i + 1
-                break
-        hier_str = re.sub(r'#[^\n]*', '', src[h_start:h_end])
+            if depth == 0: h_end = i + 1; break
         try:
-            hierarchies = ast.literal_eval(hier_str)
+            hierarchies = ast.literal_eval(re.sub(r'#[^\n]*', '', src[h_start:h_end]))
         except Exception:
             hierarchies = {}
 
-    # Extract categories from source comments
+    # Extract raw categories from source comments
     syn_section = src[syn_match.start():end]
-    categories = {}
+    raw_categories = {}
     current_cat = 'General'
     for line in syn_section.split('\n'):
         cm = re.match(r'\s*#\s*(.+)', line)
@@ -84,32 +148,29 @@ def _load_synonym_data() -> Tuple[Dict[str, List[Tuple[str, List[str]]]], Dict[s
         if km:
             key = km.group(1)
             if key in synonyms:
-                if current_cat not in categories:
-                    categories[current_cat] = []
-                categories[current_cat].append((key, sorted(synonyms[key])))
+                if current_cat not in raw_categories:
+                    raw_categories[current_cat] = []
+                raw_categories[current_cat].append((key, sorted(synonyms[key])))
 
     # Hierarchy categories
-    hier_cats = {}
+    raw_hier = {}
     current_cat = 'General'
-    hier_section = src[end:]
-    for line in hier_section.split('\n'):
+    for line in src[end:].split('\n'):
         cm = re.match(r'\s*#\s*(.+)', line)
         if cm:
             cat = cm.group(1).strip()
-            if len(cat) > 3:
-                current_cat = cat
+            if len(cat) > 3: current_cat = cat
         km = re.match(r"\s*'([^']+)'\s*:\s*\[", line)
         if km:
             key = km.group(1)
             if key in hierarchies:
-                if current_cat not in hier_cats:
-                    hier_cats[current_cat] = []
-                hier_cats[current_cat].append((key, sorted(hierarchies[key])))
+                if current_cat not in raw_hier:
+                    raw_hier[current_cat] = []
+                raw_hier[current_cat].append((key, sorted(hierarchies[key])))
 
-    return categories, hier_cats
+    return _clean_categories(raw_categories), _clean_categories(raw_hier)
 
 
-# Known failures from Gemma 4 evaluation
 KNOWN_FAILURES = [
     ("458", "Diabetic peripheral neuropathy", "Diabetic Polyneuropathy"),
     ("458", "Insulin-induced hypoglycemia", "Hypoglycemic Episodes (Iatrogenic/Reactive)"),
@@ -128,8 +189,12 @@ KNOWN_FAILURES = [
     ("512", "Acute pancreatitis", "— (not produced)"),
 ]
 
-# Load data once at module level
 SYN_CATEGORIES, HIER_CATEGORIES = _load_synonym_data()
+
+
+def _generate_code(length=6):
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
 
 # ---------------------------------------------------------------------------
 # CSS
@@ -137,75 +202,70 @@ SYN_CATEGORIES, HIER_CATEGORIES = _load_synonym_data()
 
 REVIEW_CSS = """
 <style>
-.review-header {
-    background: linear-gradient(135deg, #1a1a2e, #2d5aa0);
-    color: white;
-    padding: 28px 32px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-}
-.review-header h1 { font-size: 24px; margin: 0 0 4px 0; }
-.review-header .subtitle { color: #a0b8e0; font-size: 13px; }
-
-.reviewer-bar {
-    background: #1e1e3a;
-    border: 1px solid #333355;
-    border-radius: 10px;
-    padding: 14px 20px;
-    margin-bottom: 16px;
-}
+.review-page { background: #0f0f23; min-height: calc(100vh - 56px); }
 
 .section-banner {
-    padding: 14px 20px;
-    border-radius: 8px;
-    margin: 20px 0 12px 0;
-    font-weight: 600;
-    font-size: 16px;
+    padding: 16px 22px; border-radius: 8px; margin: 24px 0 8px 0;
+    font-weight: 700; font-size: 18px;
 }
 .section-banner.priority {
     background: rgba(204, 68, 0, 0.15);
-    border: 1px solid rgba(204, 68, 0, 0.4);
-    color: #ff8844;
+    border: 2px solid rgba(204, 68, 0, 0.4); color: #ff8844;
 }
 .section-banner.synonyms {
     background: rgba(79, 140, 255, 0.1);
-    border: 1px solid rgba(79, 140, 255, 0.3);
-    color: #4f8cff;
+    border: 2px solid rgba(79, 140, 255, 0.3); color: #4f8cff;
 }
 .section-banner.hierarchies {
     background: rgba(45, 122, 58, 0.1);
-    border: 1px solid rgba(45, 122, 58, 0.3);
-    color: #4ecdc4;
+    border: 2px solid rgba(45, 122, 58, 0.3); color: #4ecdc4;
+}
+.section-desc {
+    color: #8888aa; font-size: 13px; line-height: 1.5;
+    padding: 0 4px; margin-bottom: 12px;
 }
 
 .review-row {
-    background: #1a1a2e;
-    border: 1px solid #2a2a4a;
-    border-radius: 6px;
-    padding: 10px 14px;
-    margin: 4px 0;
+    background: #1a1a2e; border: 1px solid #2a2a4a;
+    border-radius: 6px; padding: 10px 14px; margin: 4px 0;
 }
-.review-row:hover {
-    border-color: #4f8cff;
-}
+.review-row:hover { border-color: #4f8cff; }
 
-.verdict-badge {
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 600;
+.others-pill {
+    display: inline-block; padding: 1px 7px; border-radius: 10px;
+    font-size: 10px; font-weight: 600; margin: 1px;
 }
-.verdict-match { background: #1a4a2a; color: #4ecdc4; }
-.verdict-no { background: #4a1a1a; color: #ff6b6b; }
-.verdict-unsure { background: #4a3a1a; color: #ffd166; }
+.others-match { background: #1a3a2a; color: #4ecdc4; }
+.others-no { background: #3a1a1a; color: #ff6b6b; }
+.others-unsure { background: #3a2a1a; color: #ffd166; }
+.others-added { background: #1a2a3a; color: #60a5fa; }
 
-.other-verdicts {
-    font-size: 11px;
-    color: #8888aa;
-    margin-top: 4px;
+.classroom-box {
+    background: linear-gradient(135deg, #1a1a2e, #1e2848);
+    border: 1px solid #333355; border-radius: 12px;
+    padding: 24px 28px; margin-bottom: 20px;
 }
 </style>
 """
+
+
+# ---------------------------------------------------------------------------
+# Helper: fetch others' verdicts for a classroom
+# ---------------------------------------------------------------------------
+
+def _fetch_others(sb, classroom_id, reviewer_id, table, key_field, key_value):
+    """Fetch other reviewers' submissions for a specific row."""
+    if not sb or not classroom_id:
+        return []
+    try:
+        result = sb.table(table).select(
+            '*, reviewers(name)'
+        ).eq('classroom_id', classroom_id).eq(
+            key_field, key_value
+        ).neq('reviewer_id', reviewer_id).execute()
+        return result.data or []
+    except Exception:
+        return []
 
 
 # ---------------------------------------------------------------------------
@@ -215,215 +275,345 @@ REVIEW_CSS = """
 @ui.page('/review')
 def review_page():
     ui.html(REVIEW_CSS)
-
-    # Import nav from main app
     from main import render_nav
     render_nav(active='Review')
 
     sb = get_supabase()
-    reviewer_state = {'id': None, 'name': None}
+    state = {'reviewer_id': None, 'name': None, 'classroom_id': None, 'classroom_name': None}
 
-    # ---- Header ----
-    with ui.column().classes('w-full max-w-4xl mx-auto p-4 gap-0').style(
-        'margin-top: 56px;'  # offset for fixed nav header
-    ):
-        ui.html('''
-            <div class="review-header">
-                <h1>LDDx Synonym Dictionary Review</h1>
-                <div class="subtitle">Collaborative review tool for medical student annotators</div>
-                <div class="subtitle" style="margin-top:8px;">
-                    HSIL Hackathon 2026 &bull; Harvard School of Public Health
-                </div>
-            </div>
-        ''')
+    with ui.column().classes('w-full max-w-4xl mx-auto p-4 gap-0 review-page'):
 
-        # ---- Reviewer identification ----
-        with ui.row().classes('w-full items-end gap-3 reviewer-bar'):
-            name_input = ui.input(
-                label='Your Name',
-                placeholder='Enter your name to start reviewing',
-            ).classes('flex-grow')
-            join_btn = ui.button('Start Reviewing', icon='login').props('color=primary')
+        # ============================================================
+        # CLASSROOM JOIN/CREATE
+        # ============================================================
+        with ui.column().classes('w-full gap-4 classroom-box') as classroom_box:
+            ui.label('Synonym Dictionary Review').classes('text-2xl font-bold').style('color: #4f8cff;')
+            ui.label(
+                'Join an existing classroom or create a new one. '
+                'Everyone in the same classroom sees each other\'s reviews in real-time.'
+            ).style('color: #8888aa; font-size: 13px;')
 
-        # Status label
-        status = ui.label('').classes('text-sm').style('color: #8888aa;')
+            ui.separator().style('border-color: #333355;')
 
-        # ---- Main content (hidden until reviewer joins) ----
+            name_input = ui.input(label='Your Name', placeholder='e.g. Jane Smith').classes('w-full')
+
+            with ui.tabs().classes('w-full') as tabs:
+                join_tab = ui.tab('Join Classroom')
+                create_tab = ui.tab('Create Classroom')
+
+            with ui.tab_panels(tabs, value=join_tab).classes('w-full'):
+                with ui.tab_panel(join_tab):
+                    code_input = ui.input(label='Classroom Code', placeholder='e.g. ABC123').classes('w-full')
+                    join_btn = ui.button('Join', icon='login').props('color=primary').classes('w-full')
+
+                with ui.tab_panel(create_tab):
+                    classroom_name_input = ui.input(
+                        label='Classroom Name', placeholder='e.g. HSIL Hackathon Team'
+                    ).classes('w-full')
+                    create_btn = ui.button('Create & Join', icon='add').props('color=primary').classes('w-full')
+
+        # Status
+        status_label = ui.label('').classes('text-sm').style('color: #8888aa;')
+
+        # Main review content — hidden until joined
         main_content = ui.column().classes('w-full gap-0')
         main_content.set_visibility(False)
 
-        async def on_join():
+        async def do_join():
             name = name_input.value.strip()
+            code = code_input.value.strip().upper()
             if not name:
-                ui.notify('Please enter your name', type='warning')
+                ui.notify('Enter your name', type='warning'); return
+            if not code:
+                ui.notify('Enter a classroom code', type='warning'); return
+            if not sb:
+                ui.notify('Database not connected', type='negative'); return
+
+            # Find classroom
+            cr = sb.table('classrooms').select('*').eq('join_code', code).execute()
+            if not cr.data:
+                ui.notify(f'No classroom with code "{code}"', type='negative'); return
+
+            state['classroom_id'] = cr.data[0]['id']
+            state['classroom_name'] = cr.data[0]['name']
+
+            # Create/find reviewer
+            rr = sb.table('reviewers').select('*').eq('name', name).eq(
+                'classroom_id', state['classroom_id']
+            ).execute()
+            if rr.data:
+                state['reviewer_id'] = rr.data[0]['id']
+            else:
+                rr = sb.table('reviewers').insert({
+                    'name': name, 'classroom_id': state['classroom_id']
+                }).execute()
+                state['reviewer_id'] = rr.data[0]['id']
+
+            state['name'] = name
+            classroom_box.set_visibility(False)
+            status_label.text = f'{name} — {state["classroom_name"]} ({code})'
+            main_content.set_visibility(True)
+            _load_others_and_show()
+            ui.notify(f'Joined {state["classroom_name"]}!', type='positive')
+
+        async def do_create():
+            name = name_input.value.strip()
+            cname = classroom_name_input.value.strip()
+            if not name:
+                ui.notify('Enter your name', type='warning'); return
+            if not cname:
+                ui.notify('Enter a classroom name', type='warning'); return
+            if not sb:
+                ui.notify('Database not connected', type='negative'); return
+
+            code = _generate_code()
+
+            # Create reviewer first (without classroom)
+            rr = sb.table('reviewers').insert({'name': name}).execute()
+            state['reviewer_id'] = rr.data[0]['id']
+
+            # Create classroom
+            cr = sb.table('classrooms').insert({
+                'name': cname, 'join_code': code, 'created_by': state['reviewer_id']
+            }).execute()
+            state['classroom_id'] = cr.data[0]['id']
+            state['classroom_name'] = cname
+
+            # Link reviewer to classroom
+            sb.table('reviewers').update({
+                'classroom_id': state['classroom_id']
+            }).eq('id', state['reviewer_id']).execute()
+
+            state['name'] = name
+            classroom_box.set_visibility(False)
+            status_label.text = f'{name} — {cname} (Code: {code})'
+            main_content.set_visibility(True)
+            ui.notify(f'Created classroom "{cname}" — share code: {code}', type='positive', timeout=10000)
+
+        join_btn.on_click(do_join)
+        create_btn.on_click(do_create)
+
+        # ============================================================
+        # REVIEW SECTIONS (inside main_content)
+        # ============================================================
+
+        # Containers for "others" badges (populated after join)
+        others_containers = {}
+
+        def _load_others_and_show():
+            """Load and display other reviewers' verdicts."""
+            if not sb or not state['classroom_id']:
                 return
 
-            if sb:
-                # Create or find reviewer
-                result = sb.table('reviewers').select('*').eq('name', name).execute()
-                if result.data:
-                    reviewer_state['id'] = result.data[0]['id']
-                else:
-                    result = sb.table('reviewers').insert({'name': name}).execute()
-                    reviewer_state['id'] = result.data[0]['id']
-                reviewer_state['name'] = name
-                status.text = f'Reviewing as: {name}'
-            else:
-                reviewer_state['name'] = name
-                status.text = f'Reviewing as: {name} (no database — changes won\'t persist)'
+            # Failure verdicts
+            for case_id, gt, pipe in KNOWN_FAILURES:
+                key = f'fail_{case_id}_{gt}'
+                if key in others_containers:
+                    others = _fetch_others(
+                        sb, state['classroom_id'], state['reviewer_id'],
+                        'failure_verdicts', 'ground_truth', gt
+                    )
+                    container = others_containers[key]
+                    container.clear()
+                    with container:
+                        for o in others:
+                            rname = o.get('reviewers', {}).get('name', '?') if isinstance(o.get('reviewers'), dict) else '?'
+                            v = o.get('verdict', '')
+                            css = 'others-match' if v == 'match' else 'others-no' if v == 'not_match' else 'others-unsure'
+                            vlabel = 'Match' if v == 'match' else 'No' if v == 'not_match' else '?'
+                            ui.html(f'<span class="others-pill {css}">{rname}: {vlabel}</span>')
 
-            name_input.disable()
-            join_btn.disable()
-            main_content.set_visibility(True)
-            ui.notify(f'Welcome, {name}!', type='positive')
+            # Synonym additions
+            for cat, entries in SYN_CATEGORIES.items():
+                for canonical, _ in entries:
+                    key = f'syn_{canonical}'
+                    if key in others_containers:
+                        others = _fetch_others(
+                            sb, state['classroom_id'], state['reviewer_id'],
+                            'synonym_verdicts', 'canonical_term', canonical
+                        )
+                        container = others_containers[key]
+                        container.clear()
+                        with container:
+                            for o in others:
+                                rname = o.get('reviewers', {}).get('name', '?') if isinstance(o.get('reviewers'), dict) else '?'
+                                added = o.get('alias_to_add', '')
+                                flag = o.get('flag_issue', '')
+                                if added:
+                                    ui.html(f'<span class="others-pill others-added">{rname}: +{added}</span>')
+                                if flag:
+                                    ui.html(f'<span class="others-pill others-unsure">{rname}: {flag}</span>')
 
-        join_btn.on_click(on_join)
-
-        # ---- Build review sections ----
         with main_content:
 
-            # ================================================
-            # SECTION 1: Known Failures (Priority)
-            # ================================================
-            ui.html('<div class="section-banner priority">Section 1: Known Failures — START HERE</div>')
-            ui.label(
-                'These are cases where the pipeline got the diagnosis right but the evaluator '
-                'marked it wrong. For each row: is the pipeline output clinically equivalent to '
-                'the ground truth?'
-            ).classes('text-sm').style('color: #8888aa; margin-bottom: 10px;')
+            # Link to compiled view
+            with ui.row().classes('w-full justify-end gap-2').style('margin-bottom: 8px;'):
+                ui.button('View Compiled Dictionary', icon='summarize',
+                          on_click=lambda: ui.navigate.to('/review/compiled')).props('flat size=sm').style('color: #4ecdc4;')
+                ui.button('Refresh Others', icon='refresh',
+                          on_click=_load_others_and_show).props('flat size=sm').style('color: #8888aa;')
+
+            # ============================
+            # SECTION 1: Known Failures
+            # ============================
+            ui.html('<div class="section-banner priority">1. Diagnostic Match Review (Start Here)</div>')
+            ui.html('''<div class="section-desc">
+                Our AI pipeline produced these diagnoses, but the automated evaluator couldn't
+                tell if they matched the ground truth. <b>Your job:</b> for each pair, decide
+                if the pipeline's diagnosis is <b>clinically equivalent</b> to the ground truth.<br><br>
+                <b>Match</b> = same condition, just different wording<br>
+                <b>Not a match</b> = genuinely different diagnoses<br>
+                <b>Unsure</b> = needs group discussion
+            </div>''')
 
             for case_id, gt, pipe in KNOWN_FAILURES:
-                with ui.row().classes('w-full items-center gap-3 review-row'):
-                    ui.label(f'Case {case_id}').style(
-                        'color: #cc8844; font-weight: 600; min-width: 70px;'
-                    )
-                    with ui.column().classes('flex-grow gap-0'):
-                        ui.label(gt).style('color: #e0e0e0; font-size: 13px; font-weight: 600;')
-                        ui.label(f'→ {pipe}').style('color: #8888aa; font-size: 12px;')
+                key = f'fail_{case_id}_{gt}'
+                with ui.column().classes('w-full gap-1 review-row'):
+                    with ui.row().classes('w-full items-center gap-3'):
+                        ui.label(f'Case {case_id}').style(
+                            'color: #cc8844; font-weight: 600; min-width: 65px; font-size: 12px;'
+                        )
+                        with ui.column().classes('flex-grow gap-0'):
+                            ui.label(f'Ground truth: {gt}').style(
+                                'color: #e0e0e0; font-size: 13px; font-weight: 600;'
+                            )
+                            ui.label(f'Pipeline said: {pipe}').style('color: #8888aa; font-size: 12px;')
 
-                    verdict_select = ui.select(
-                        options={'': '—', 'match': 'Match', 'not_match': 'Not a match', 'unsure': 'Unsure'},
-                        value='',
-                    ).style('min-width: 130px;')
+                        verdict_select = ui.select(
+                            options={'': '—', 'match': 'Match', 'not_match': 'Not a match', 'unsure': 'Unsure'},
+                            value='',
+                        ).style('min-width: 130px;')
+                        comment_input = ui.input(placeholder='Comment (optional)').style('min-width: 140px;')
 
-                    comment_input = ui.input(placeholder='Comment').style('min-width: 150px;')
+                    # Others' verdicts
+                    others_containers[key] = ui.row().classes('w-full gap-1 flex-wrap').style('min-height: 0;')
 
-                    # Closure for saving
                     def make_save(c=case_id, g=gt, p=pipe, sel=verdict_select, com=comment_input):
                         def save():
-                            if not sb or not reviewer_state['id']:
-                                return
-                            if not sel.value:
+                            if not sb or not state['reviewer_id'] or not sel.value:
                                 return
                             sb.table('failure_verdicts').upsert({
-                                'reviewer_id': reviewer_state['id'],
-                                'case_id': c,
-                                'ground_truth': g,
-                                'pipeline_output': p,
-                                'verdict': sel.value,
+                                'reviewer_id': state['reviewer_id'],
+                                'classroom_id': state['classroom_id'],
+                                'case_id': c, 'ground_truth': g,
+                                'pipeline_output': p, 'verdict': sel.value,
                                 'comment': com.value or '',
                             }).execute()
-                            ui.notify('Saved', type='positive', position='bottom-right', timeout=1000)
+                            ui.notify('Saved', type='positive', position='bottom-right', timeout=800)
                         return save
 
                     saver = make_save()
                     verdict_select.on_value_change(lambda e, s=saver: s())
                     comment_input.on('blur', lambda e, s=saver: s())
 
-            # ================================================
-            # SECTION 2: Existing Synonyms
-            # ================================================
-            ui.html('<div class="section-banner synonyms">Section 2: Existing Synonym Groups</div>')
-            ui.label(
-                'Review each mapping. Add missing aliases or flag incorrect ones.'
-            ).classes('text-sm').style('color: #8888aa; margin-bottom: 10px;')
+            # ============================
+            # SECTION 2: Synonym Review
+            # ============================
+            ui.html('<div class="section-banner synonyms">2. Synonym Dictionary Review</div>')
+            ui.html('''<div class="section-desc">
+                The evaluator uses these synonym mappings to match pipeline output to ground truth.
+                Each row shows a <b>canonical diagnosis</b> (from the ground truth dataset) and
+                its currently accepted <b>aliases</b> (terms our AI might use instead).<br><br>
+                <b>Your tasks:</b><br>
+                &bull; If you know an alternative name for a condition that's missing, type it in "add alias"<br>
+                &bull; If an existing alias is wrong (different condition), flag it<br>
+                &bull; Skip entries you're not sure about — focus on your areas of knowledge
+            </div>''')
 
             for cat, entries in SYN_CATEGORIES.items():
                 if not entries:
                     continue
-
                 with ui.expansion(f'{cat} ({len(entries)} terms)', icon='medical_services').classes('w-full').style(
                     'color: #4f8cff; background: rgba(79,140,255,0.04); '
                     'border: 1px solid #333355; border-radius: 8px; margin: 4px 0;'
                 ):
                     for canonical, aliases in entries:
+                        key = f'syn_{canonical}'
                         deduped = [a for a in aliases if a.lower() != canonical.lower()]
                         alias_str = ', '.join(deduped) if deduped else '—'
 
-                        with ui.row().classes('w-full items-start gap-3 review-row'):
-                            with ui.column().classes('flex-grow gap-0'):
-                                ui.label(canonical).style(
-                                    'color: #e0e0e0; font-weight: 600; font-size: 13px;'
-                                )
-                                ui.label(alias_str).style(
-                                    'color: #8888aa; font-size: 12px;'
-                                )
+                        with ui.column().classes('w-full gap-1 review-row'):
+                            with ui.row().classes('w-full items-start gap-3'):
+                                with ui.column().classes('flex-grow gap-0'):
+                                    ui.label(canonical).style(
+                                        'color: #e0e0e0; font-weight: 600; font-size: 13px;'
+                                    )
+                                    ui.label(f'Aliases: {alias_str}').style(
+                                        'color: #666688; font-size: 11px;'
+                                    )
+                                add_input = ui.input(placeholder='+ add alias').style('min-width: 140px;')
+                                flag_input = ui.input(placeholder='Flag issue').style('min-width: 120px;')
 
-                            add_input = ui.input(placeholder='+ add alias').style('min-width: 140px;')
-                            flag_input = ui.input(placeholder='Flag issue').style('min-width: 120px;')
+                            others_containers[key] = ui.row().classes('w-full gap-1 flex-wrap').style('min-height: 0;')
 
                             def make_syn_save(ct=cat, cn=canonical, ai=add_input, fi=flag_input):
                                 def save():
-                                    if not sb or not reviewer_state['id']:
+                                    if not sb or not state['reviewer_id']:
                                         return
                                     if not ai.value and not fi.value:
                                         return
                                     sb.table('synonym_verdicts').upsert({
-                                        'reviewer_id': reviewer_state['id'],
-                                        'category': ct,
-                                        'canonical_term': cn,
+                                        'reviewer_id': state['reviewer_id'],
+                                        'classroom_id': state['classroom_id'],
+                                        'category': ct, 'canonical_term': cn,
                                         'alias_to_add': ai.value or '',
                                         'flag_issue': fi.value or '',
                                     }).execute()
-                                    ui.notify('Saved', type='positive', position='bottom-right', timeout=1000)
+                                    ui.notify('Saved', type='positive', position='bottom-right', timeout=800)
                                 return save
 
                             syn_saver = make_syn_save()
                             add_input.on('blur', lambda e, s=syn_saver: s())
                             flag_input.on('blur', lambda e, s=syn_saver: s())
 
-            # ================================================
+            # ============================
             # SECTION 3: Hierarchies
-            # ================================================
-            ui.html('<div class="section-banner hierarchies">Section 3: Clinical Hierarchies</div>')
-            ui.label(
-                'Check parent/child relationships. Add missing subtypes or flag errors.'
-            ).classes('text-sm').style('color: #8888aa; margin-bottom: 10px;')
+            # ============================
+            ui.html('<div class="section-banner hierarchies">3. Clinical Hierarchy Review</div>')
+            ui.html('''<div class="section-desc">
+                These define parent/child relationships between diagnoses. For example,
+                "STEMI" is a subtype of "Myocardial Infarction" — if the pipeline says STEMI
+                and the ground truth says MI, the hierarchy tells the evaluator it's a partial match.<br><br>
+                <b>Your tasks:</b><br>
+                &bull; If a subtype is missing, add it<br>
+                &bull; If a subtype is listed under the wrong parent, flag it<br>
+                &bull; Focus on relationships you're confident about
+            </div>''')
 
             for cat, entries in HIER_CATEGORIES.items():
                 if not entries:
                     continue
-
                 with ui.expansion(f'{cat} ({len(entries)} groups)', icon='account_tree').classes('w-full').style(
                     'color: #4ecdc4; background: rgba(45,122,58,0.04); '
                     'border: 1px solid #2a4a3a; border-radius: 8px; margin: 4px 0;'
                 ):
                     for supertype, subtypes in entries:
-                        with ui.row().classes('w-full items-start gap-3 review-row'):
-                            with ui.column().classes('flex-grow gap-0'):
-                                ui.label(supertype).style(
-                                    'color: #e0e0e0; font-weight: 600; font-size: 13px;'
-                                )
-                                ui.label(', '.join(subtypes)).style(
-                                    'color: #8888aa; font-size: 12px;'
-                                )
-
-                            add_input = ui.input(placeholder='+ add subtype').style('min-width: 140px;')
-                            flag_input = ui.input(placeholder='Flag issue').style('min-width: 120px;')
+                        with ui.column().classes('w-full gap-1 review-row'):
+                            with ui.row().classes('w-full items-start gap-3'):
+                                with ui.column().classes('flex-grow gap-0'):
+                                    ui.label(supertype).style(
+                                        'color: #e0e0e0; font-weight: 600; font-size: 13px;'
+                                    )
+                                    ui.label(f'Subtypes: {", ".join(subtypes)}').style(
+                                        'color: #666688; font-size: 11px;'
+                                    )
+                                add_input = ui.input(placeholder='+ add subtype').style('min-width: 140px;')
+                                flag_input = ui.input(placeholder='Flag issue').style('min-width: 120px;')
 
                             def make_hier_save(sp=supertype, ai=add_input, fi=flag_input):
                                 def save():
-                                    if not sb or not reviewer_state['id']:
+                                    if not sb or not state['reviewer_id']:
                                         return
                                     if not ai.value and not fi.value:
                                         return
                                     sb.table('hierarchy_verdicts').upsert({
-                                        'reviewer_id': reviewer_state['id'],
+                                        'reviewer_id': state['reviewer_id'],
+                                        'classroom_id': state['classroom_id'],
                                         'supertype': sp,
                                         'subtype_to_add': ai.value or '',
                                         'flag_issue': fi.value or '',
                                     }).execute()
-                                    ui.notify('Saved', type='positive', position='bottom-right', timeout=1000)
+                                    ui.notify('Saved', type='positive', position='bottom-right', timeout=800)
                                 return save
 
                             hier_saver = make_hier_save()
@@ -436,4 +626,130 @@ def review_page():
                 f'Synonym groups: {sum(len(v) for v in SYN_CATEGORIES.values())} | '
                 f'Hierarchy groups: {sum(len(v) for v in HIER_CATEGORIES.values())} | '
                 f'Known failures: {len(KNOWN_FAILURES)}'
-            ).classes('text-xs').style('color: #666; margin-top: 8px;')
+            ).classes('text-xs').style('color: #555; margin-top: 8px;')
+
+
+# ---------------------------------------------------------------------------
+# Compiled View — /review/compiled
+# ---------------------------------------------------------------------------
+
+@ui.page('/review/compiled')
+def compiled_page():
+    from main import render_nav
+    render_nav(active='Review')
+
+    sb = get_supabase()
+
+    with ui.column().classes('w-full max-w-4xl mx-auto p-4 gap-4').style(
+        'margin-top: 56px; background: #0f0f23; min-height: calc(100vh - 56px);'
+    ):
+        ui.label('Compiled Synonym Dictionary').classes('text-2xl font-bold').style('color: #4f8cff;')
+        ui.label(
+            'Aggregated view of all reviewer submissions. Shows consensus across classrooms.'
+        ).style('color: #8888aa; font-size: 13px; margin-bottom: 12px;')
+
+        if not sb:
+            ui.label('Database not connected').style('color: #ff6b6b;')
+            return
+
+        # Fetch all data
+        failures = sb.table('failure_verdicts').select('*, reviewers(name)').execute().data or []
+        syn_adds = sb.table('synonym_verdicts').select('*, reviewers(name)').execute().data or []
+        hier_adds = sb.table('hierarchy_verdicts').select('*, reviewers(name)').execute().data or []
+
+        # ---- Failure Verdicts Summary ----
+        ui.html('<div class="section-banner priority" style="font-size:16px;">Diagnostic Match Verdicts</div>')
+
+        # Group by ground_truth
+        from collections import defaultdict
+        fail_groups = defaultdict(list)
+        for f in failures:
+            fail_groups[f['ground_truth']].append(f)
+
+        if fail_groups:
+            with ui.column().classes('w-full gap-2'):
+                for gt, verdicts in sorted(fail_groups.items()):
+                    matches = sum(1 for v in verdicts if v['verdict'] == 'match')
+                    nos = sum(1 for v in verdicts if v['verdict'] == 'not_match')
+                    unsures = sum(1 for v in verdicts if v['verdict'] == 'unsure')
+                    total = len(verdicts)
+                    pipe = verdicts[0].get('pipeline_output', '')
+
+                    with ui.row().classes('w-full items-center gap-3 review-row'):
+                        with ui.column().classes('flex-grow gap-0'):
+                            ui.label(gt).style('color: #e0e0e0; font-weight: 600; font-size: 13px;')
+                            ui.label(f'→ {pipe}').style('color: #8888aa; font-size: 12px;')
+                        if matches:
+                            ui.html(f'<span class="others-pill others-match">{matches}/{total} Match</span>')
+                        if nos:
+                            ui.html(f'<span class="others-pill others-no">{nos}/{total} No</span>')
+                        if unsures:
+                            ui.html(f'<span class="others-pill others-unsure">{unsures}/{total} Unsure</span>')
+        else:
+            ui.label('No verdicts submitted yet').style('color: #666;')
+
+        # ---- Synonym Additions ----
+        ui.html('<div class="section-banner synonyms" style="font-size:16px;">New Synonym Suggestions</div>')
+
+        additions = [s for s in syn_adds if s.get('alias_to_add')]
+        flags = [s for s in syn_adds if s.get('flag_issue')]
+
+        if additions:
+            with ui.column().classes('w-full gap-1'):
+                for s in additions:
+                    rname = s.get('reviewers', {}).get('name', '?') if isinstance(s.get('reviewers'), dict) else '?'
+                    ui.html(
+                        f'<div class="review-row" style="padding:8px 12px;">'
+                        f'<b style="color:#e0e0e0;">{s["canonical_term"]}</b> '
+                        f'<span style="color:#60a5fa;">+ {s["alias_to_add"]}</span> '
+                        f'<span style="color:#666; font-size:11px;">— {rname}</span></div>'
+                    )
+        else:
+            ui.label('No aliases suggested yet').style('color: #666;')
+
+        if flags:
+            ui.label('Flagged Issues:').style('color: #ffd166; font-weight: 600; margin-top: 12px;')
+            for s in flags:
+                rname = s.get('reviewers', {}).get('name', '?') if isinstance(s.get('reviewers'), dict) else '?'
+                ui.html(
+                    f'<div class="review-row" style="padding:8px 12px;">'
+                    f'<b style="color:#e0e0e0;">{s["canonical_term"]}</b> '
+                    f'<span style="color:#ffd166;">{s["flag_issue"]}</span> '
+                    f'<span style="color:#666; font-size:11px;">— {rname}</span></div>'
+                )
+
+        # ---- Hierarchy Additions ----
+        ui.html('<div class="section-banner hierarchies" style="font-size:16px;">New Hierarchy Suggestions</div>')
+
+        h_additions = [h for h in hier_adds if h.get('subtype_to_add')]
+        if h_additions:
+            for h in h_additions:
+                rname = h.get('reviewers', {}).get('name', '?') if isinstance(h.get('reviewers'), dict) else '?'
+                ui.html(
+                    f'<div class="review-row" style="padding:8px 12px;">'
+                    f'<b style="color:#e0e0e0;">{h["supertype"]}</b> '
+                    f'<span style="color:#4ecdc4;">+ {h["subtype_to_add"]}</span> '
+                    f'<span style="color:#666; font-size:11px;">— {rname}</span></div>'
+                )
+        else:
+            ui.label('No subtypes suggested yet').style('color: #666;')
+
+        # ---- Download ----
+        ui.separator().style('border-color: #333355; margin-top: 20px;')
+
+        import json
+
+        def download_json():
+            data = {
+                'failure_verdicts': failures,
+                'synonym_additions': syn_adds,
+                'hierarchy_additions': hier_adds,
+                'exported_at': __import__('datetime').datetime.now().isoformat(),
+            }
+            content = json.dumps(data, indent=2, default=str)
+            ui.download(content.encode(), 'synonym_review_compiled.json', 'application/json')
+
+        with ui.row().classes('gap-3'):
+            ui.button('Download JSON', icon='download', on_click=download_json).props('flat').style('color: #4f8cff;')
+            ui.button('Back to Review', icon='arrow_back',
+                      on_click=lambda: ui.navigate.to('/review')).props('flat').style('color: #8888aa;')
