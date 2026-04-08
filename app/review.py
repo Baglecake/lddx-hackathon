@@ -171,24 +171,17 @@ def _load_synonym_data():
     return _clean_categories(raw_categories), _clean_categories(raw_hier)
 
 
-KNOWN_FAILURES = [
-    ("458", "Diabetic peripheral neuropathy", "Diabetic Polyneuropathy"),
-    ("458", "Insulin-induced hypoglycemia", "Hypoglycemic Episodes (Iatrogenic/Reactive)"),
-    ("458", "Organic erectile dysfunction", "Diabetic Autonomic Neuropathy"),
-    ("29", "Exogenous insulin administration", "Factitious Hypoglycemia (Exogenous Insulin Admin.)"),
-    ("29", "Factitious disorder", "Factitious Hypoglycemia"),
-    ("29", "Severe liver disease", "— (not produced)"),
-    ("29", "Adrenal insufficiency", "— (not produced)"),
-    ("48", "Inadvertent surgical removal of parathyroid glands", "Hypoparathyroidism (Post-Surgical)"),
-    ("48", "Hypomagnesemia", "Hypomagnesemia-Induced Hypocalcemia"),
-    ("48", "Hypocalcemia", "Hypomagnesemia-Induced Hypocalcemia"),
-    ("48", "Hypothyroidism", "— (not produced)"),
-    ("512", "Diverticulitis", "— (not produced)"),
-    ("512", "Peptic ulcer disease", "— (not produced)"),
-    ("512", "Gastroenteritis", "— (not produced)"),
-    ("512", "Acute pancreatitis", "— (not produced)"),
-]
+def _load_mismatches():
+    """Load evaluator mismatches from JSON file."""
+    mismatch_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'review_mismatches.json')
+    if not os.path.exists(mismatch_path):
+        return []
+    import json
+    with open(mismatch_path) as f:
+        data = json.load(f)
+    return data.get('items', [])
 
+REVIEW_MISMATCHES = _load_mismatches()
 SYN_CATEGORIES, HIER_CATEGORIES = _load_synonym_data()
 
 
@@ -454,57 +447,89 @@ def review_page():
                           on_click=_load_others_and_show).props('flat size=sm').style('color: #8888aa;')
 
             # ============================
-            # SECTION 1: Known Failures
+            # SECTION 1: Evaluator Mismatches
             # ============================
             ui.html('<div class="section-banner priority">1. Diagnostic Match Review (Start Here)</div>')
-            ui.html('''<div class="section-desc">
-                Our AI pipeline produced these diagnoses, but the automated evaluator couldn't
-                tell if they matched the ground truth. <b>Your job:</b> for each pair, decide
-                if the pipeline's diagnosis is <b>clinically equivalent</b> to the ground truth.<br><br>
-                <b>Match</b> = same condition, just different wording<br>
-                <b>Not a match</b> = genuinely different diagnoses<br>
-                <b>Unsure</b> = needs group discussion
+            ui.html(f'''<div class="section-desc">
+                Our AI pipeline produced diagnoses that the automated evaluator couldn't match
+                to the ground truth. There are <b>{len(REVIEW_MISMATCHES)} unmatched terms</b>
+                across {sum(m["case_count"] for m in REVIEW_MISMATCHES)} case instances.<br><br>
+                <b>Your job:</b> For each term, decide if the pipeline's output is
+                <b>clinically equivalent</b> to the ground truth, or if a synonym should be added.<br><br>
+                <b>Match</b> = same condition, just different wording (add as synonym)<br>
+                <b>Not a match</b> = genuinely different diagnoses (pipeline got it wrong)<br>
+                <b>Unsure</b> = needs group discussion<br><br>
+                Items are grouped by frequency — the most impactful terms are at the top.
             </div>''')
 
-            for case_id, gt, pipe in KNOWN_FAILURES:
-                key = f'fail_{case_id}_{gt}'
-                with ui.column().classes('w-full gap-1 review-row'):
-                    with ui.row().classes('w-full items-center gap-3'):
-                        ui.label(f'Case {case_id}').style(
-                            'color: #cc8844; font-weight: 600; min-width: 65px; font-size: 12px;'
-                        )
-                        with ui.column().classes('flex-grow gap-0'):
-                            ui.label(f'Ground truth: {gt}').style(
-                                'color: #e0e0e0; font-size: 13px; font-weight: 600;'
-                            )
-                            ui.label(f'Pipeline said: {pipe}').style('color: #8888aa; font-size: 12px;')
+            # Sort by case count (most impactful first)
+            sorted_mismatches = sorted(REVIEW_MISMATCHES, key=lambda x: -x['case_count'])
 
-                        verdict_select = ui.select(
-                            options={'': '—', 'match': 'Match', 'not_match': 'Not a match', 'unsure': 'Unsure'},
-                            value='',
-                        ).style('min-width: 130px;')
-                        comment_input = ui.input(placeholder='Comment (optional)').style('min-width: 140px;')
+            # Show in batches via expansion panels to avoid overwhelming
+            batch_size = 50
+            for batch_start in range(0, len(sorted_mismatches), batch_size):
+                batch = sorted_mismatches[batch_start:batch_start + batch_size]
+                batch_end = min(batch_start + batch_size, len(sorted_mismatches))
+                label = f'Items {batch_start + 1}–{batch_end} of {len(sorted_mismatches)}'
 
-                    # Others' verdicts
-                    others_containers[key] = ui.row().classes('w-full gap-1 flex-wrap').style('min-height: 0;')
+                with ui.expansion(label, icon='checklist').classes('w-full').style(
+                    'color: #ff8844; background: rgba(204,68,0,0.04); '
+                    'border: 1px solid rgba(204,68,0,0.2); border-radius: 8px; margin: 4px 0;'
+                ) as batch_panel:
+                    if batch_start == 0:
+                        batch_panel.open()
 
-                    def make_save(c=case_id, g=gt, p=pipe, sel=verdict_select, com=comment_input):
-                        def save():
-                            if not sb or not state['reviewer_id'] or not sel.value:
-                                return
-                            sb.table('failure_verdicts').upsert({
-                                'reviewer_id': state['reviewer_id'],
-                                'classroom_id': state['classroom_id'],
-                                'case_id': c, 'ground_truth': g,
-                                'pipeline_output': p, 'verdict': sel.value,
-                                'comment': com.value or '',
-                            }).execute()
-                            ui.notify('Saved', type='positive', position='bottom-right', timeout=800)
-                        return save
+                    for item in batch:
+                        gt = item['ground_truth']
+                        pipe_examples = ', '.join(item['pipeline_examples'][:2]) or '—'
+                        sources = ', '.join(item['sources'])
+                        cases = ', '.join(item['example_cases'][:3])
+                        count = item['case_count']
+                        key = f'fail_{gt}'
 
-                    saver = make_save()
-                    verdict_select.on_value_change(lambda e, s=saver: s())
-                    comment_input.on('blur', lambda e, s=saver: s())
+                        with ui.column().classes('w-full gap-1 review-row'):
+                            with ui.row().classes('w-full items-center gap-3'):
+                                ui.label(f'{count}x').style(
+                                    'color: #cc8844; font-weight: 700; min-width: 35px; font-size: 12px;'
+                                )
+                                with ui.column().classes('flex-grow gap-0'):
+                                    ui.label(gt).style(
+                                        'color: #e0e0e0; font-size: 13px; font-weight: 600;'
+                                    )
+                                    ui.label(f'Pipeline said: {pipe_examples}').style(
+                                        'color: #8888aa; font-size: 11px;'
+                                    )
+                                    ui.label(f'Cases: {cases} | Model: {sources}').style(
+                                        'color: #555577; font-size: 10px;'
+                                    )
+
+                                verdict_select = ui.select(
+                                    options={'': '—', 'match': 'Match', 'not_match': 'Not a match', 'unsure': 'Unsure'},
+                                    value='',
+                                ).style('min-width: 130px;')
+                                comment_input = ui.input(placeholder='Synonym to add / comment').style(
+                                    'min-width: 160px;'
+                                )
+
+                            others_containers[key] = ui.row().classes('w-full gap-1 flex-wrap').style('min-height: 0;')
+
+                            def make_save(g=gt, pe=pipe_examples, sel=verdict_select, com=comment_input):
+                                def save():
+                                    if not sb or not state['reviewer_id'] or not sel.value:
+                                        return
+                                    sb.table('failure_verdicts').upsert({
+                                        'reviewer_id': state['reviewer_id'],
+                                        'classroom_id': state['classroom_id'],
+                                        'case_id': 'multi', 'ground_truth': g,
+                                        'pipeline_output': pe, 'verdict': sel.value,
+                                        'comment': com.value or '',
+                                    }).execute()
+                                    ui.notify('Saved', type='positive', position='bottom-right', timeout=800)
+                                return save
+
+                            saver = make_save()
+                            verdict_select.on_value_change(lambda e, s=saver: s())
+                            comment_input.on('blur', lambda e, s=saver: s())
 
             # ============================
             # SECTION 2: Synonym Review
@@ -623,9 +648,9 @@ def review_page():
             # Footer
             ui.separator().style('border-color: #333355; margin-top: 24px;')
             ui.label(
+                f'Evaluator mismatches: {len(REVIEW_MISMATCHES)} | '
                 f'Synonym groups: {sum(len(v) for v in SYN_CATEGORIES.values())} | '
-                f'Hierarchy groups: {sum(len(v) for v in HIER_CATEGORIES.values())} | '
-                f'Known failures: {len(KNOWN_FAILURES)}'
+                f'Hierarchy groups: {sum(len(v) for v in HIER_CATEGORIES.values())}'
             ).classes('text-xs').style('color: #555; margin-top: 8px;')
 
 
