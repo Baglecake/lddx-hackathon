@@ -1,0 +1,2980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LDDx Clinical Synonym Dictionary — Review Form</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f6fa; color: #222; line-height: 1.5; padding: 20px; max-width: 1100px; margin: 0 auto; }
+  
+  .header { background: linear-gradient(135deg, #1a1a2e, #2d5aa0); color: white; padding: 30px 35px; border-radius: 12px; margin-bottom: 24px; }
+  .header h1 { font-size: 26px; margin-bottom: 4px; }
+  .header .subtitle { color: #a0b8e0; font-size: 14px; }
+  .header .meta { margin-top: 16px; font-size: 13px; color: #c0d0e8; }
+  
+  .info-box { background: white; border: 1px solid #dde; border-radius: 10px; padding: 22px 28px; margin-bottom: 20px; }
+  .info-box h2 { color: #2d5aa0; font-size: 18px; margin-bottom: 10px; }
+  .info-box p { font-size: 14px; margin-bottom: 8px; color: #444; }
+  .info-box ul { margin: 8px 0 8px 24px; font-size: 14px; color: #444; }
+  .info-box li { margin-bottom: 4px; }
+  
+  .key-box { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 12px; }
+  .key-item { background: #f0f4ff; border: 1px solid #c0d0e8; border-radius: 6px; padding: 8px 14px; font-size: 13px; }
+  .key-item b { color: #2d5aa0; }
+  
+  .section { margin-top: 30px; }
+  .section-head { font-size: 20px; color: #2d5aa0; border-bottom: 3px solid #2d5aa0; padding-bottom: 6px; margin-bottom: 16px; }
+  .section-head.priority { color: #cc4400; border-color: #cc4400; }
+  .section-desc { font-size: 14px; color: #555; margin-bottom: 14px; }
+  
+  .cat-head { font-size: 16px; color: #3a6bc5; margin: 20px 0 8px; font-weight: 600; }
+  .cat-head.hier { color: #2d7a3a; }
+  
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
+  th { background: #2d5aa0; color: white; text-align: left; padding: 8px 10px; font-weight: 600; font-size: 12px; }
+  th.hier { background: #2d7a3a; }
+  th.priority { background: #cc4400; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8f9fc; }
+  td.canonical { font-weight: 600; }
+  
+  input[type="text"], select { border: 1px solid #ccc; border-radius: 4px; padding: 4px 8px; font-size: 12px; font-family: inherit; }
+  input.notes { width: 100%; background: #fffde6; }
+  input.alias-add { width: 100%; background: #f0fff0; border-color: #8c8; }
+  select.verdict { background: #fffde6; padding: 4px 6px; }
+  
+  .reviewer-box { background: #eef3ff; border: 2px solid #2d5aa0; border-radius: 10px; padding: 20px 28px; margin-bottom: 24px; }
+  .reviewer-box label { font-weight: 600; font-size: 14px; color: #2d5aa0; }
+  .reviewer-box input { margin-top: 4px; padding: 8px 12px; font-size: 14px; border: 1px solid #aab; border-radius: 6px; width: 300px; }
+  
+  .actions { margin-top: 30px; text-align: center; padding: 20px; }
+  .btn { padding: 12px 28px; font-size: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin: 0 8px; }
+  .btn-primary { background: #2d5aa0; color: white; }
+  .btn-primary:hover { background: #1e4080; }
+  .btn-secondary { background: #eee; color: #333; }
+  .btn-secondary:hover { background: #ddd; }
+  
+  @media print {
+    body { padding: 0; background: white; }
+    .header { break-after: avoid; }
+    .actions { display: none; }
+    input, select { border: 1px solid #999 !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>LDDx Clinical Synonym Dictionary</h1>
+  <div class="subtitle">Review Form for Medical Student Annotators</div>
+  <div class="meta">
+    Project: Local-DDx &mdash; Multi-Agent Differential Diagnosis Pipeline<br>
+    For: HSIL Hackathon 2026, Harvard School of Public Health<br>
+    Date: April 2026
+  </div>
+</div>
+
+<div class="reviewer-box">
+  <label>Your Name:</label><br>
+  <input type="text" id="reviewer-name" placeholder="Enter your name"><br><br>
+  <label>Date Reviewed:</label><br>
+  <input type="date" id="review-date">
+</div>
+
+<div class="info-box">
+  <h2>What is this?</h2>
+  <p>Our AI diagnostic pipeline generates differential diagnoses for clinical cases. To evaluate accuracy, we compare its output against ground truth diagnoses. The problem: the pipeline might say <i>"Diabetic Polyneuropathy"</i> while the ground truth says <i>"Diabetic peripheral neuropathy"</i> &mdash; clinically the same thing, but our evaluator marks it wrong.</p>
+  <p>This dictionary tells the evaluator which terms are equivalent. <b>Your job: review it, fix errors, and add missing synonyms.</b></p>
+  
+  <h2 style="margin-top:16px;">What to do</h2>
+  <ul>
+    <li><b style="color:#cc4400;">Section 1 (START HERE):</b> Known failures &mdash; the pipeline got it right but the evaluator said wrong. Decide if each pair matches.</li>
+    <li><b style="color:#2d5aa0;">Section 2:</b> Existing synonyms &mdash; scan tables, flag wrong mappings, add missing aliases.</li>
+    <li><b style="color:#2d7a3a;">Section 3:</b> Hierarchies &mdash; check parent/child relationships are correct.</li>
+  </ul>
+  
+  <div class="key-box">
+    <div class="key-item"><b>&#10003; Match</b> = Same condition</div>
+    <div class="key-item"><b>&#10007; Not a match</b> = Different condition</div>
+    <div class="key-item"><b>? Unsure</b> = Needs discussion</div>
+    <div class="key-item"><b>+ term</b> = Write in a missing alias</div>
+  </div>
+</div>
+
+
+<div class="section">
+  <h2 class="section-head priority">Section 1: Known Failures (START HERE)</h2>
+  <p class="section-desc">These are real cases where the pipeline got the diagnosis right but our evaluator marked it wrong. <b>For each row, decide: is the pipeline output clinically equivalent to the ground truth?</b></p>
+  
+  <table>
+    <tr>
+      <th class="priority" style="width:60px;">Case</th>
+      <th class="priority" style="width:30%;">Ground Truth Diagnosis</th>
+      <th class="priority" style="width:30%;">Pipeline Output</th>
+      <th class="priority" style="width:15%;">Your Verdict</th>
+      <th class="priority">Comments</th>
+    </tr>
+
+    <tr>
+      <td>458</td>
+      <td class="canonical">Diabetic peripheral neuropathy</td>
+      <td>Diabetic Polyneuropathy</td>
+      <td><select class="verdict"><option value="">--</option><option value="match">&#10003; Match</option><option value="no">&#10007; Not a match</option><option value="unsure">? Unsure</option></select></td>
+      <td><input type="text" class="notes" placeholder="Optional comment"></td>
+    </tr>
+    <tr>
+      <td>458</td>
+      <td class="canonical">Insulin-induced hypoglycemia</td>
+      <td>Hypoglycemic Episodes (Iatrogenic/Reactive)</td>
+      <td><select class="verdict"><option value="">--</option><option value="match">&#10003; Match</option><option value="no">&#10007; Not a match</option><option value="unsure">? Unsure</option></select></td>
+      <td><input type="text" class="notes" placeholder="Optional comment"></td>
+    </tr>
+    <tr>
+      <td>458</td>
+      <td class="canonical">Organic erectile dysfunction</td>
+      <td>Diabetic Autonomic Neuropathy</td>
+      <td><select class="verdict"><option value="">--</option><option value="match">&#10003; Match</option><option value="no">&#10007; Not a match</option><option value="unsure">? Unsure</option></select></td>
+      <td><input type="text" class="notes" placeholder="Optional comment"></td>
+    </tr>
+    <tr>
+      <td>29</td>
+      <td class="canonical">Exogenous insulin administration</td>
+      <td>Factitious Hypoglycemia (Exogenous Insulin Admin.)</td>
+      <td><select class="verdict"><option value="">--</option><option value="match">&#10003; Match</option><option value="no">&#10007; Not a match</option><option value="unsure">? Unsure</option></select></td>
+      <td><input type="text" class="notes" placeholder="Optional comment"></td>
+    </tr>
+    <tr>
+      <td>29</td>
+      <td class="canonical">Factitious disorder</td>
+      <td>Factitious Hypoglycemia</td>
+      <td><select class="verdict"><option value="">--</option><option value="match">&#10003; Match</option><option value="no">&#10007; Not a match</option><option value="unsure">? Unsure</option></select></td>
+      <td><input type="text" class="notes" placeholder="Optional comment"></td>
+    </tr>
+    <tr>
+      <td>29</td>
+      <td class="canonical">Severe liver disease</td>
+      <td>— (not produced)</td>
+      <td><select class="verdict"><option value="">--</option><option value="match">&#10003; Match</option><option value="no">&#10007; Not a match</option><option value="unsure">? Unsure</option></select></td>
+      <td><input type="text" class="notes" placeholder="Optional comment"></td>
+    </tr>
+    <tr>
+      <td>29</td>
+      <td class="canonical">Adrenal insufficiency</td>
+      <td>— (not produced)</td>
+      <td><select class="verdict"><option value="">--</option><option value="match">&#10003; Match</option><option value="no">&#10007; Not a match</option><option value="unsure">? Unsure</option></select></td>
+      <td><input type="text" class="notes" placeholder="Optional comment"></td>
+    </tr>
+    <tr>
+      <td>48</td>
+      <td class="canonical">Inadvertent surgical removal of parathyroid glands</td>
+      <td>Hypoparathyroidism (Post-Surgical)</td>
+      <td><select class="verdict"><option value="">--</option><option value="match">&#10003; Match</option><option value="no">&#10007; Not a match</option><option value="unsure">? Unsure</option></select></td>
+      <td><input type="text" class="notes" placeholder="Optional comment"></td>
+    </tr>
+    <tr>
+      <td>48</td>
+      <td class="canonical">Hypomagnesemia</td>
+      <td>Hypomagnesemia-Induced Hypocalcemia</td>
+      <td><select class="verdict"><option value="">--</option><option value="match">&#10003; Match</option><option value="no">&#10007; Not a match</option><option value="unsure">? Unsure</option></select></td>
+      <td><input type="text" class="notes" placeholder="Optional comment"></td>
+    </tr>
+    <tr>
+      <td>48</td>
+      <td class="canonical">Hypocalcemia</td>
+      <td>Hypomagnesemia-Induced Hypocalcemia</td>
+      <td><select class="verdict"><option value="">--</option><option value="match">&#10003; Match</option><option value="no">&#10007; Not a match</option><option value="unsure">? Unsure</option></select></td>
+      <td><input type="text" class="notes" placeholder="Optional comment"></td>
+    </tr>
+    <tr>
+      <td>48</td>
+      <td class="canonical">Hypothyroidism</td>
+      <td>— (not produced)</td>
+      <td><select class="verdict"><option value="">--</option><option value="match">&#10003; Match</option><option value="no">&#10007; Not a match</option><option value="unsure">? Unsure</option></select></td>
+      <td><input type="text" class="notes" placeholder="Optional comment"></td>
+    </tr>
+    <tr>
+      <td>512</td>
+      <td class="canonical">Diverticulitis</td>
+      <td>— (not produced)</td>
+      <td><select class="verdict"><option value="">--</option><option value="match">&#10003; Match</option><option value="no">&#10007; Not a match</option><option value="unsure">? Unsure</option></select></td>
+      <td><input type="text" class="notes" placeholder="Optional comment"></td>
+    </tr>
+    <tr>
+      <td>512</td>
+      <td class="canonical">Peptic ulcer disease</td>
+      <td>— (not produced)</td>
+      <td><select class="verdict"><option value="">--</option><option value="match">&#10003; Match</option><option value="no">&#10007; Not a match</option><option value="unsure">? Unsure</option></select></td>
+      <td><input type="text" class="notes" placeholder="Optional comment"></td>
+    </tr>
+    <tr>
+      <td>512</td>
+      <td class="canonical">Gastroenteritis</td>
+      <td>— (not produced)</td>
+      <td><select class="verdict"><option value="">--</option><option value="match">&#10003; Match</option><option value="no">&#10007; Not a match</option><option value="unsure">? Unsure</option></select></td>
+      <td><input type="text" class="notes" placeholder="Optional comment"></td>
+    </tr>
+    <tr>
+      <td>512</td>
+      <td class="canonical">Acute pancreatitis</td>
+      <td>— (not produced)</td>
+      <td><select class="verdict"><option value="">--</option><option value="match">&#10003; Match</option><option value="no">&#10007; Not a match</option><option value="unsure">? Unsure</option></select></td>
+      <td><input type="text" class="notes" placeholder="Optional comment"></td>
+    </tr>
+  </table>
+</div>
+
+
+<div class="section">
+  <h2 class="section-head">Section 2: Existing Synonym Groups</h2>
+  <p class="section-desc">Each table shows a medical specialty. The <b>Canonical Term</b> is the ground truth label. <b>Accepted Aliases</b> are terms we currently count as equivalent. Review and use the fields to add missing aliases or flag issues.</p>
+
+  <h3 class="cat-head">Cardiovascular</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">myocardial infarction</td>
+      <td>acute mi, heart attack, mi</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">acute coronary syndrome</td>
+      <td>acs</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">congestive heart failure</td>
+      <td>cardiac failure, chf, heart failure</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">atrial fibrillation</td>
+      <td>af, afib</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">carotid sinus syndrome</td>
+      <td>carotid sinus hypersensitivity, carotid sinus syncope</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Renal</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">acute kidney injury</td>
+      <td>acute renal failure, aki, arf</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">chronic kidney disease</td>
+      <td>chronic renal failure, ckd, crf</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">contrast-induced nephropathy</td>
+      <td>cin, contrast nephropathy, contrast-induced aki</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">acute nephropyelitis</td>
+      <td>acute pyelonephritis, kidney infection, pyelonephritis, upper urinary tract infection</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">chronic nephropyelitis</td>
+      <td>chronic pyelonephritis, recurrent pyelonephritis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td class="canonical">renal tuberculosis</td>
+      <td>genitourinary tuberculosis, tuberculosis of kidney, urogenital tuberculosis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td class="canonical">bladder stones</td>
+      <td>bladder calculi, cystolithiasis, urinary bladder stones, vesical calculi</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Respiratory</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">chronic obstructive pulmonary disease</td>
+      <td>copd</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">community-acquired pneumonia</td>
+      <td>cap, pneumonia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">acute respiratory distress syndrome</td>
+      <td>ards</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">pulmonary embolism</td>
+      <td>pe</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">deep vein thrombosis</td>
+      <td>dvt</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Endocrine</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">diabetes mellitus</td>
+      <td>diabetes, dm</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">diabetic ketoacidosis</td>
+      <td>dka</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">type 1 diabetes</td>
+      <td>iddm, t1dm</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">type 2 diabetes</td>
+      <td>niddm, t2dm</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Hematology</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">thrombotic thrombocytopenic purpura</td>
+      <td>ttp</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">thrombotic microangiopathy</td>
+      <td>tma</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">disseminated intravascular coagulation</td>
+      <td>dic</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">hemolytic uremic syndrome</td>
+      <td>hus</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">hemolytic anemia</td>
+      <td>ha</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td class="canonical">microangiopathic hemolytic anemia</td>
+      <td>maha, microangiopathic ha</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td class="canonical">autoimmune hemolytic anemia</td>
+      <td>aiha, autoimmune ha</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td class="canonical">paroxysmal nocturnal hemoglobinuria</td>
+      <td>pnh</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td class="canonical">sickle cell disease</td>
+      <td>scd, sickle cell anemia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td class="canonical">iron deficiency anemia</td>
+      <td>ida, iron deficiency</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td class="canonical">megaloblastic anemia</td>
+      <td>b12 deficiency, folate deficiency</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td class="canonical">spherocytosis</td>
+      <td>hereditary spherocytosis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td class="canonical">thrombocytopenia</td>
+      <td>low platelets</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td class="canonical">immune thrombocytopenic purpura</td>
+      <td>idiopathic thrombocytopenic purpura, itp</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td class="canonical">heparin induced thrombocytopenia</td>
+      <td>hit</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>16</td>
+      <td class="canonical">antiphospholipid syndrome</td>
+      <td>antiphospholipid antibody syndrome, aps</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Rheumatology</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">systemic lupus erythematosus</td>
+      <td>lupus, sle</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">rheumatoid arthritis</td>
+      <td>ra</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">ankylosing spondylitis</td>
+      <td>as</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">pseudogout</td>
+      <td>calcium pyrophosphate deposition disease, calcium-pyrophosphate disease, chondrocalcinosis, cppd, cppd arthropathy, cppd deposition disease</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">gout</td>
+      <td>gouty arthritis, uric acid arthropathy</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td class="canonical">osteoarthritis</td>
+      <td>degenerative joint disease, oa</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td class="canonical">disseminated gonorrhea</td>
+      <td>disseminated gonococcal infection, gonococcal arthritis, reactive arthritis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td class="canonical">reiter syndrome (reactive arthritis)</td>
+      <td>reactive arthritis, reiter disease, reiter syndrome</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Infectious</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">pneumocystis jirovecii pneumonia</td>
+      <td>pcp, pjp, pneumocystis jiroveci pneumonia, pneumocystis pneumonia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">allergic bronchopulmonary aspergillosis</td>
+      <td>abpa, allergic aspergillosis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">acute pulmonary aspergillosis</td>
+      <td>aspergillus pneumonia, invasive aspergillosis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">histoplasmosis</td>
+      <td>histo, histoplasma infection</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">coccidioidomycosis</td>
+      <td>cocci, valley fever</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td class="canonical">tuberculosis</td>
+      <td>pulmonary tuberculosis, tb</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Neurology</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">transient ischemic attack</td>
+      <td>tia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">cerebrovascular accident</td>
+      <td>cva, stroke</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">multiple sclerosis</td>
+      <td>ms</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Gastroenterology</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">gastroesophageal reflux disease</td>
+      <td>gerd</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">inflammatory bowel disease</td>
+      <td>ibd</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">peptic ulcer disease</td>
+      <td>pud</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">infectious gastroenteritis</td>
+      <td>bacterial gastroenteritis, gastroenteritis, viral gastroenteritis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Infectious Disease</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">urinary tract infection</td>
+      <td>uti</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">acquired immunodeficiency syndrome</td>
+      <td>aids</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">human immunodeficiency virus</td>
+      <td>hiv</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Movement Disorders / Psychiatry</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">pseudoparkinsonism</td>
+      <td>antipsychotic-induced parkinsonism, drug-induced parkinsonism, neuroleptic-induced parkinsonism</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">tardive dyskinesia</td>
+      <td>oral-facial dyskinesia, orofacial dyskinesia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">neuroleptic malignant syndrome</td>
+      <td>nms</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">akathisia</td>
+      <td>drug-induced akathisia, neuroleptic-induced akathisia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Cardiovascular (extended)</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">cardiac contusion</td>
+      <td>blunt cardiac injury, myocardial contusion</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">vasovagal syncope</td>
+      <td>neurocardiogenic syncope, vasovagal episode, vasovagal reaction</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Headache</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">tension headache</td>
+      <td>tension type headache, tension-type headache</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">migraine</td>
+      <td>migraine headache, migraine with aura, migraine without aura</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Hypertension subtypes</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">renovascular hypertension</td>
+      <td>renovascular disease</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">essential hypertension</td>
+      <td>primary hypertension</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Urological</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">overactive bladder</td>
+      <td>urge incontinence, urge urinary incontinence, urgency incontinence</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Neonatal</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">rh hemolytic disease</td>
+      <td>hemolytic disease of the newborn, rh incompatibility, rh isoimmunization</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">neonatal sepsis</td>
+      <td>sepsis, septicemia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Thyroid</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">hyperthyroidism</td>
+      <td>neonatal thyrotoxicosis, thyrotoxicosis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">hypothyroidism</td>
+      <td>congenital hypothyroidism, transient hypothyroidism</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Oncology / Hematology (extended)</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">waldenstrom macroglobulinemia</td>
+      <td>waldenstroms macroglobulinemia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Other</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">end stage renal disease</td>
+      <td>esrd</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">acute tubular necrosis</td>
+      <td>atn</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">hypertension</td>
+      <td>high blood pressure, htn</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">hypotension</td>
+      <td>low blood pressure</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">drug-induced nephropathy</td>
+      <td>drug-induced interstitial nephritis, drug-induced nephrotoxicity, medication-induced nephrotoxicity</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td class="canonical">peripheral artery disease</td>
+      <td>pad, peripheral arterial disease, peripheral vascular disease, pvd</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td class="canonical">critical limb ischemia</td>
+      <td>chronic limb-threatening ischemia, cli</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Neonatal / Blood group</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">rh or abo incompatibility</td>
+      <td>abo incompatibility, blood group incompatibility, rh incompatibility, rh isoimmunization</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Vascular / Erectile</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">vascular insufficiency</td>
+      <td>arterial insufficiency, arteriosclerosis, atherosclerosis, pad, peripheral arterial disease, peripheral artery disease</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">neurogenic erectile dysfunction</td>
+      <td>autonomic neuropathy, diabetic neuropathy, neuropathic erectile dysfunction</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">drug induced erectile dysfunction</td>
+      <td>erectile dysfunction due to medication, iatrogenic erectile dysfunction, medication induced erectile dysfunction</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Epidural / Obstetric</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">epidural induced hypotension</td>
+      <td>epidural anesthesia induced hypotension, epidural hypotension, neuraxial hypotension, spinal hypotension, sympathetic block, sympathetic blockade</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">amniotic fluid embolism</td>
+      <td>afe, anaphylactoid syndrome of pregnancy</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Neuromuscular</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">congenital myasthenia gravis</td>
+      <td>cms, congenital myasthenic syndrome, congenital myasthenic syndromes</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Overdose / Intoxication</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">overdose</td>
+      <td>drug intoxication, drug overdose, medication overdose, opioid overdose, substance intoxication, substance overdose</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Infectious (categorical)</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">various infectious diseases</td>
+      <td>chikungunya, dengue fever, infectious disease, malaria, tropical infection, typhoid fever</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">clostridium difficile</td>
+      <td>c diff, c difficile, clostridioides difficile, clostridioides difficile infection, clostridium difficile infection</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">streptococcal pharyngitis</td>
+      <td>gas pharyngitis, group a strep, group a streptococcus, strep throat, streptococcus pyogenes pharyngitis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">infectious mononucleosis</td>
+      <td>ebv, ebv infection, epstein barr virus, glandular fever, mono, mononucleosis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">cytomegalovirus</td>
+      <td>cmv, cmv infection, cytomegalovirus infection</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Toxicology / Poisoning</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">scombroid poisoning</td>
+      <td>histamine fish poisoning, scombroid fish poisoning, scombroid toxicity</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">ciguatera poisoning</td>
+      <td>ciguatera, ciguatera fish poisoning, ciguatera toxicity</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Surgical / Post-operative</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">wound infection</td>
+      <td>incisional infection, postoperative infection, postoperative wound infection, ssi, surgical site infection, surgical wound infection</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Reproductive / Gynecological</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">mullerian agenesis</td>
+      <td>mayer rokitansky kuster hauser syndrome, mrkh, mrkh syndrome, mullerian aplasia, rokitansky syndrome, vaginal agenesis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">genitopelvic pain disorder</td>
+      <td>dyspareunia, genito pelvic pain penetration disorder, vaginismus</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Round 4 additions (cases 300-399 zero-recall analysis)</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">pleuritis</td>
+      <td>pleurisy</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">bronchogenic cancer</td>
+      <td>bronchial carcinoma, bronchogenic carcinoma, lung cancer</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">tracheaectasy</td>
+      <td>bronchiectasis, tracheal ectasia, tracheobronchiectasis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">anemia of chronic disease</td>
+      <td>anemia of inflammation, chronic disease anemia, chronic inflammatory anemia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">dysthymia</td>
+      <td>dysthymic disorder, persistent depressive disorder</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td class="canonical">angina pectoris</td>
+      <td>angina, stable angina</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td class="canonical">foreign body aspiration</td>
+      <td>airway foreign body, foreign body in airway, foreign body in bronchus, foreign body in trachea, tracheal foreign body</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td class="canonical">poststreptococcal glomerulonephritis</td>
+      <td>acute poststreptococcal glomerulonephritis, apsgn, post streptococcal glomerulonephritis, psgn</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td class="canonical">wilms tumor</td>
+      <td>nephroblastoma, wilm tumor</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td class="canonical">lymphangiosarcoma</td>
+      <td>stewart treves syndrome</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td class="canonical">attention deficit hyperactivity disorder</td>
+      <td>add, adhd, attention deficit disorder</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td class="canonical">cerebral infarction</td>
+      <td>cerebral ischemia, ischemic stroke</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td class="canonical">gastrointestinal infection</td>
+      <td>gastroenteritis, gi infection, infectious gastroenteritis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td class="canonical">inflammatory bowel syndrome</td>
+      <td>ibd, inflammatory bowel disease</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td class="canonical">pulmonary infarction</td>
+      <td>pulmonary thromboembolism</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>16</td>
+      <td class="canonical">breast abscess</td>
+      <td>lactational mastitis, mastitis, periareolar abscess</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Round 4b — remaining zero-recall fixes</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">kidney stones</td>
+      <td>nephrolithiasis, renal calculi, renal stones, urolithiasis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">infectious endocarditis</td>
+      <td>bacterial endocarditis, infective endocarditis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">lewy body dementia</td>
+      <td>dementia with lewy bodies, dlb, lewy body disease</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">major depressive disorder</td>
+      <td>clinical depression, depression, mdd, severe depression, unipolar depression</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">alcoholic liver disease</td>
+      <td>alcohol induced liver disease, alcohol liver disease, alcohol related liver disease</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td class="canonical">syphilis</td>
+      <td>treponema pallidum, treponema pallidum infection</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td class="canonical">gonorrhea</td>
+      <td>gonococcal infection, neisseria gonorrhoeae</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td class="canonical">nightmares</td>
+      <td>nightmare disorder</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td class="canonical">night terrors</td>
+      <td>sleep terror disorder, sleep terrors</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td class="canonical">medial collateral ligament injury</td>
+      <td>mcl injury, mcl sprain, mcl tear, medial collateral ligament sprain, medial collateral ligament tear</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td class="canonical">anterior cruciate ligament injury</td>
+      <td>acl injury, acl rupture, acl tear, anterior cruciate ligament rupture, anterior cruciate ligament tear</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td class="canonical">lateral collateral ligament injury</td>
+      <td>lateral collateral ligament sprain, lateral collateral ligament tear, lcl injury, lcl sprain, lcl tear</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td class="canonical">posterior cruciate ligament injury</td>
+      <td>pcl injury, pcl rupture, pcl tear, posterior cruciate ligament rupture, posterior cruciate ligament tear</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td class="canonical">acute arterial occlusion</td>
+      <td>acute arterial embolism, acute limb ischemia, arterial embolism, arterial occlusion</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td class="canonical">nutritional deficiency anemia</td>
+      <td>nutritional deficiencies, nutritional deficiency</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Vestibular / ENT</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">vestibular neuronitis</td>
+      <td>acute vestibular neuritis, acute vestibular neuronitis, acute vestibular syndrome, vestibular neuritis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">labyrinthitis</td>
+      <td>acute labyrinthitis, vestibular labyrinthitis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">benign positional vertigo</td>
+      <td>benign paroxysmal positional vertigo, bppv, positional vertigo</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">GI / Abdominal</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">intestinal tuberculosis</td>
+      <td>abdominal tuberculosis, gastrointestinal tuberculosis, tuberculosis of intestine, tuberculous enteritis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">intestinal obstruction</td>
+      <td>bowel obstruction, ileus, large bowel obstruction, mechanical bowel obstruction, small bowel obstruction</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">congenital megacolon</td>
+      <td>aganglionic megacolon, hirschsprung disease, hirschsprungs disease</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">duodenal bulbar ulcer</td>
+      <td>duodenal erosion, duodenal ulcer, peptic ulcer disease</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">bleeding peptic ulcer</td>
+      <td>gastric ulcer with bleeding, peptic ulcer disease, peptic ulcer hemorrhage, upper gi bleeding</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td class="canonical">esophagitis</td>
+      <td>eosinophilic esophagitis, erosive esophagitis, pill esophagitis, reflux esophagitis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td class="canonical">liver cirrhosis</td>
+      <td>alcoholic cirrhosis, cirrhosis, cirrhosis of liver, hepatic cirrhosis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td class="canonical">liver abscess</td>
+      <td>amoebic liver abscess, hepatic abscess, pyogenic liver abscess</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td class="canonical">ulcerative colitis</td>
+      <td>inflammatory bowel disease, uc</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td class="canonical">irritable bowel disease (constipation type)</td>
+      <td>constipation predominant ibs, ibs, ibs c, irritable bowel disease, irritable bowel syndrome</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Pulmonary</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">emphysema</td>
+      <td>chronic obstructive pulmonary disease, copd, pulmonary emphysema</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">lung abscess</td>
+      <td>lung infection with cavitation, pulmonary abscess</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">bronchial asthma</td>
+      <td>asthma, bronchospasm, reactive airway disease</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">lung cancer</td>
+      <td>bronchogenic cancer, bronchogenic carcinoma, non small cell lung cancer, pulmonary malignancy, pulmonary neoplasm, small cell lung cancer</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Neurology / Spine</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">disk herniation</td>
+      <td>disc herniation, herniated disc, herniated disk, intervertebral disc herniation, prolapsed disc, slipped disc</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">intervertebral disk hernia</td>
+      <td>disc herniation, disk herniation, herniated disc, herniated disk, intervertebral disc herniation</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">intracranial neoplasm</td>
+      <td>brain neoplasm, brain tumor, brain tumour, cerebral neoplasm, cns tumor, intracranial tumor</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">carotid sinus syndrome</td>
+      <td>carotid sinus hypersensitivity, carotid sinus syncope</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">neurologic syncope</td>
+      <td>neurocardiogenic syncope, neurological syncope, reflex syncope, vasovagal syncope</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Psychiatric</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">posttraumatic stress disorder</td>
+      <td>post traumatic stress disorder, post-traumatic stress disorder, ptsd</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">schizoaffective disorder</td>
+      <td>schizoaffective, schizophrenia with mood disorder</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Urinary</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">stress incontinence</td>
+      <td>stress urinary incontinence, sui, urinary stress incontinence</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">mixed incontinence</td>
+      <td>mixed urinary incontinence, mui</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">overactive bladder</td>
+      <td>urge incontinence, urge urinary incontinence, urgency incontinence</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Endocrine / Metabolic</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">hypocalcemia</td>
+      <td>calcium deficiency, hypocalcaemia, low calcium</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">simple obesity</td>
+      <td>metabolic syndrome, morbid obesity, obesity</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Tuberculosis variants</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">tuberculosis of lumbar vertebrae</td>
+      <td>pott disease, potts disease, skeletal tuberculosis, spinal tuberculosis, tuberculous spondylitis, vertebral tuberculosis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Fracture matching</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">fracture</td>
+      <td>bone fracture, skeletal fracture</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Infection categorical</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">infection (cellulitis or osteomyelitis)</td>
+      <td>bone infection, cellulitis, osteomyelitis, skin infection, soft tissue infection</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Hepatitis</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">alcoholic hepatitis</td>
+      <td>alcohol induced hepatitis, alcoholic liver disease</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">drug-induced hepatitis</td>
+      <td>dili, drug induced liver injury, medication induced hepatitis, toxic hepatitis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Obesity subtypes (GT uses these)</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">gonadal obesity</td>
+      <td>endocrine obesity, obesity</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">hypothalamic obesity</td>
+      <td>endocrine obesity, obesity</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">cortisol obesity</td>
+      <td>cushing syndrome, cushings syndrome, obesity</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">pancreatic obesity</td>
+      <td>metabolic syndrome, obesity</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Vague/categorical GT labels</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">an overdose of a substance</td>
+      <td>acute intoxication, drug overdose, mixed drug intoxication, opioid overdose, overdose, substance overdose</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">a psychiatric episode</td>
+      <td>mental health crisis, psychiatric decompensation, psychiatric emergency, psychotic episode</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">a metabolic issue</td>
+      <td>electrolyte imbalance, metabolic acidosis, metabolic alkalosis, metabolic derangement, metabolic disorder</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">pneumonia (bacterial or viral)</td>
+      <td>bacterial pneumonia, cap, community acquired pneumonia, pneumonia, viral pneumonia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">infections from bacteria or viruses</td>
+      <td>bacterial infection, infected bite, infectious disease, infectious wound, viral infection</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td class="canonical">bites or stings from insects or animals</td>
+      <td>bite or sting, brown recluse spider bite, infected bite or sting, insect bite, snake bite, spider bite, venomous snake bite</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td class="canonical">allergic or toxic reaction to plants or substances</td>
+      <td>allergic contact dermatitis, allergic reaction, anaphylaxis, contact dermatitis, toxic reaction</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td class="canonical">bladder or kidney injury</td>
+      <td>bladder injury, bladder trauma, kidney injury, renal injury, renal trauma</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td class="canonical">bladder or kidney cancer</td>
+      <td>bladder cancer, kidney cancer, renal cell carcinoma, transitional cell carcinoma, urothelial carcinoma</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td class="canonical">side effects of chemotherapy</td>
+      <td>chemotherapy induced, chemotherapy induced hematuria, chemotherapy side effects, chemotherapy toxicity, drug toxicity</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td class="canonical">renal or bladder tumors</td>
+      <td>bladder cancer, kidney cancer, renal cell carcinoma, urothelial carcinoma</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td class="canonical">systemic infection</td>
+      <td>bacteremia, sepsis, septicemia, systemic inflammatory response</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td class="canonical">infection from bacteria or viruses</td>
+      <td>bacterial infection, infectious disease, viral infection</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Pathogen-as-diagnosis (GT lists organisms)</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">staphylococcus aureus</td>
+      <td>mrsa, mssa, osteomyelitis, septic arthritis, staph infection, staphylococcal infection</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">streptococcus pyogenes</td>
+      <td>cellulitis, group a strep, necrotizing fasciitis, strep infection, streptococcal infection</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">haemophilus influenzae</td>
+      <td>h influenzae infection, haemophilus infection</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">salmonella species</td>
+      <td>salmonella, salmonella infection, salmonellosis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">kingella kingae</td>
+      <td>kingella infection, kingella osteomyelitis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td class="canonical">streptococcus pneumoniae infection</td>
+      <td>pneumococcal infection, pneumococcal meningitis, pneumococcal pneumonia, streptococcus pneumoniae</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td class="canonical">haemophilus influenzae infection</td>
+      <td>h influenzae, haemophilus infection, haemophilus influenzae</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td class="canonical">salmonella infection</td>
+      <td>enteric fever, salmonella, salmonella species, salmonellosis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Hepatitis B</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">hepatitis b vaccination</td>
+      <td>completed hbv vaccination, hbv vaccination, hepatitis b immune status, hepatitis b immunity</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Vague categorical GT labels</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">various infectious diseases</td>
+      <td>chikungunya, dengue fever, infectious disease, malaria, tropical infection, typhoid fever</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">fungal infections</td>
+      <td>aspergillosis, blastomycosis, coccidioidomycosis, fungal infection, histoplasmosis, paracoccidioidomycosis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">liver parasites like echinococcus and fasciola</td>
+      <td>cystic echinococcosis, echinococcosis, fasciola hepatica, fascioliasis, hepatic hydatid cyst, hepatic hydatidosis, hydatid cyst</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">diseases of the vestibular apparatus</td>
+      <td>acute vestibular syndrome, benign paroxysmal positional vertigo, bppv, labyrinthitis, meniere disease, vestibular disorder, vestibular neuritis, vestibular neuronitis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">ophthalmologic diseases</td>
+      <td>eye disease, nystagmus, ophthalmologic disease, optic neuritis, visual disturbance</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td class="canonical">sepsis from a different source</td>
+      <td>bloodstream infection, catheter related bloodstream infection, central line associated bloodstream infection, clabsi, sepsis, septicemia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td class="canonical">sexually transmitted infection (gonorrhea, chlamydia, syphilis)</td>
+      <td>chlamydia, chlamydial infection, gonococcal infection, gonorrhea, sexually transmitted infection, std, sti, syphilis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Polyps</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">hyperplastic polyp</td>
+      <td>colon polyp, colonic polyp, colorectal polyp</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">tubular adenoma</td>
+      <td>adenomatous polyp, colon adenoma, colorectal adenoma</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">tubulovillous adenoma</td>
+      <td>adenomatous polyp, colon adenoma, colorectal adenoma</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">villous adenoma</td>
+      <td>adenomatous polyp, colon adenoma, colorectal adenoma</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Cardiac / Ischemia</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">myocardial ischemia</td>
+      <td>acute coronary syndrome, angina, angina pectoris, cardiac ischemia, coronary artery disease</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">cocaine-induced myocardial ischemia</td>
+      <td>acute coronary syndrome, cocaine cardiomyopathy, cocaine induced chest pain</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">cardiogenic syncope</td>
+      <td>cardiac arrhythmia, cardiac conduction disorder, cardiac conduction system disorder, cardiac syncope</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Seizures</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">focal seizures</td>
+      <td>focal epilepsy, partial seizures, seizure disorder, temporal lobe epilepsy</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">generalized seizures</td>
+      <td>epilepsy, generalized tonic clonic seizure, grand mal seizure, seizure disorder, tonic clonic seizures</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">convulsive movement in hysteria</td>
+      <td>conversion disorder, functional seizures, pnes, psychogenic non epileptic seizures</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Pediatric / Congenital</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">cretinism</td>
+      <td>congenital hypothyroidism, neonatal hypothyroidism</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">rickets</td>
+      <td>nutritional rickets, vitamin d deficiency</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">hydrocephaly</td>
+      <td>congenital hydrocephalus, hydrocephalus</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">physiologic jaundice</td>
+      <td>neonatal jaundice, newborn jaundice, physiological jaundice</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">abo incompatibility</td>
+      <td>abo hemolytic disease, abo hemolytic disease of newborn, abo isoimmunization</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Neck / Lymph</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">cervical lymphadenitis</td>
+      <td>cervical lymphadenopathy, lymphadenopathy, neck lymphadenopathy</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">tuberculous lymphadenitis</td>
+      <td>lymph node tuberculosis, lymphadenopathy, scrofula</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">malignant lymphoma</td>
+      <td>hodgkin lymphoma, lymphoma, non hodgkin lymphoma</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">thyroid adenoma</td>
+      <td>thyroid mass, thyroid nodule</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">thyroid carcinoma</td>
+      <td>follicular thyroid cancer, papillary thyroid cancer, thyroid cancer</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td class="canonical">nonspecific lymphadenitis</td>
+      <td>bacterial lymphadenitis, lymphadenitis, lymphadenopathy, reactive lymphadenopathy</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Musculoskeletal</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">humeral fracture</td>
+      <td>fracture of the humerus, humerus fracture, proximal humerus fracture</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">nedc muscle strain</td>
+      <td>cervical muscle strain, cervical strain, muscle strain, neck muscle strain</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">spinal disk herniation</td>
+      <td>cervical herniated disc, disc herniation, disk herniation, herniated disc, lumbar disc herniation</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">myofascitis of lower back</td>
+      <td>back strain, lower back pain, lumbar myofascial pain, muscle strain, myofascial pain</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">acute back sprain</td>
+      <td>back strain, lumbar sprain, muscle strain, musculoskeletal back pain</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td class="canonical">lumbar flexion compression fractures</td>
+      <td>compression fracture, lumbar compression fracture, vertebral compression fracture</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td class="canonical">tennis elbow (lateral epicondylitis)</td>
+      <td>lateral epicondylalgia, lateral epicondylitis, tennis elbow</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Hearing</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">prasbycusis</td>
+      <td>age related hearing loss, presbycusis, sensorineural hearing loss</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">cochlear nerve damage</td>
+      <td>auditory neuropathy, cochlear damage, sensorineural hearing loss</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">otosderosis</td>
+      <td>conductive hearing loss, otosclerosis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Psychiatric (additional)</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">social phobia</td>
+      <td>social anxiety, social anxiety disorder</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">agoraphobia/specific phobia</td>
+      <td>agoraphobia, phobic disorder, specific phobia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">panic attack</td>
+      <td>acute panic, anxiety attack, panic disorder</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Prostate</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">benign prostatic hypertrophy (bph)</td>
+      <td>benign prostatic hyperplasia, bph, prostatic hyperplasia, prostatic hypertrophy</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">GI specifics</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">pyloric obstruction</td>
+      <td>gastric outlet obstruction, pyloric stenosis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">gastric perforation</td>
+      <td>gastrointestinal perforation, peptic ulcer perforation, perforated ulcer</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">functional dyspepsia</td>
+      <td>dyspepsia, indigestion, non ulcer dyspepsia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">redundant sigmoid colon</td>
+      <td>dolichosigmoid, elongated sigmoid, sigmoid volvulus</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">intestinal adhesion</td>
+      <td>abdominal adhesions, adhesive bowel obstruction, postoperative adhesions</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Misc</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">analgesic nephropathy</td>
+      <td>analgesic induced nephropathy, analgesic induced papillary necrosis, nsaid nephropathy</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">consolidation</td>
+      <td>bacterial pneumonia, community acquired pneumonia, lung consolidation, pneumonia, pulmonary consolidation</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">pleural effusion</td>
+      <td>exudative effusion, fluid in pleural space, hydrothorax</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">nasopharyngeal carcinoma with neck metastasis</td>
+      <td>head and neck cancer, nasopharyngeal cancer, nasopharyngeal carcinoma, squamous cell carcinoma</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">fistula of the second or third branchial cleft</td>
+      <td>branchial anomaly, branchial cleft cyst, branchial cleft fistula, lateral neck cyst</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head">Round 5c — final zero-recall fixes</h3>
+  <table>
+    <tr><th style="width:30px;">#</th><th style="width:28%;">Canonical Term</th><th style="width:38%;">Accepted Aliases</th><th style="width:18%;">Add Missing Alias</th><th>Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">bacterial food poisoning</td>
+      <td>bacterial gastroenteritis, food poisoning, foodborne illness, gastroenteritis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">tumor of the colon</td>
+      <td>colon cancer, colon tumor, colonic neoplasm, colorectal cancer</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">polyp of colon</td>
+      <td>adenomatous polyp, colon polyp, colonic polyp, colorectal polyp</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">tumor of small intestine</td>
+      <td>gastric cancer, small bowel neoplasm, small bowel tumor, small intestine cancer</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">achalasia of cardia</td>
+      <td>achalasia, cardiospasm, esophageal achalasia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td class="canonical">esophageal hiatal hernia</td>
+      <td>diaphragmatic hernia, hiatal hernia, hiatus hernia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td class="canonical">bulbar paralysis</td>
+      <td>bulbar palsy, lower motor neuron lesion, pseudobulbar palsy</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td class="canonical">prostatic hyperplasia</td>
+      <td>benign prostatic hyperplasia, benign prostatic hypertrophy, bph, prostatic hypertrophy</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td class="canonical">kidney stone</td>
+      <td>kidney stones, nephrolithiasis, renal calculi, renal stones, urolithiasis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td class="canonical">physiological vertigo</td>
+      <td>benign positional vertigo, motion sickness, positional vertigo, vertigo</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td class="canonical">rib fracture</td>
+      <td>chest wall fracture, costal fracture, costochondritis, fractured rib</td>
+      <td><input type="text" class="alias-add" placeholder="+ add synonym"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h2 class="section-head" style="color:#2d7a3a; border-color:#2d7a3a;">Section 3: Clinical Hierarchies</h2>
+  <p class="section-desc">These define parent/child relationships. If the pipeline says <i>"STEMI"</i> and the ground truth says <i>"Myocardial Infarction"</i>, the hierarchy tells the evaluator STEMI is a subtype of MI (partial match). Check these are correct.</p>
+
+  <h3 class="cat-head hier">General</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">myocardial infarction</td>
+      <td>acute mi, non-st elevation myocardial infarction, nstemi, st elevation myocardial infarction, stemi</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">pneumonia</td>
+      <td>aspiration pneumonia, bacterial pneumonia, coccidioidomycosis, community-acquired pneumonia, fungal pneumonia, histoplasmosis, hospital-acquired pneumonia, pneumocystis jirovecii pneumonia, pneumocystis pneumonia, ventilator-associated pneumonia, viral pneumonia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">arthritis</td>
+      <td>gouty arthritis, osteoarthritis, psoriatic arthritis, reactive arthritis, rheumatoid arthritis, septic arthritis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">acute kidney injury</td>
+      <td>contrast-induced nephropathy, drug-induced aki, intrinsic aki, ischemic aki, nephrotoxic aki, postrenal aki, prerenal aki</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">heart failure</td>
+      <td>acute heart failure, chronic heart failure, congestive heart failure, diastolic heart failure, systolic heart failure</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td class="canonical">diabetes mellitus</td>
+      <td>drug-induced diabetes, gestational diabetes, secondary diabetes, type 1 diabetes, type 2 diabetes</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td class="canonical">vasculitis</td>
+      <td>anca-associated vasculitis, drug-induced vasculitis, hypersensitivity vasculitis, necrotizing vasculitis, systemic vasculitis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td class="canonical">nephropathy</td>
+      <td>contrast-induced nephropathy, diabetic nephropathy, drug-induced nephropathy, hypertensive nephropathy, ischemic nephropathy</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td class="canonical">aspergillosis</td>
+      <td>abpa, acute pulmonary aspergillosis, allergic aspergillosis, allergic bronchopulmonary aspergillosis, aspergillus pneumonia, invasive aspergillosis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td class="canonical">fungal pneumonia</td>
+      <td>aspergillosis, blastomycosis, coccidioidomycosis, cryptococcosis, histoplasmosis, pneumocystis pneumonia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td class="canonical">hemolytic anemia</td>
+      <td>autoimmune hemolytic anemia, glucose-6-phosphate dehydrogenase deficiency, hereditary spherocytosis, microangiopathic hemolytic anemia, paroxysmal nocturnal hemoglobinuria, sickle cell anemia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td class="canonical">thrombotic microangiopathy</td>
+      <td>atypical hemolytic uremic syndrome, complement-mediated ttp, hemolytic uremic syndrome, thrombotic thrombocytopenic purpura</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td class="canonical">bleeding disorders</td>
+      <td>disseminated intravascular coagulation, hemophilia, heparin induced thrombocytopenia, immune thrombocytopenic purpura, thrombocytopenia, von willebrand disease</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td class="canonical">anemia</td>
+      <td>aplastic anemia, chronic disease anemia, hemolytic anemia, iron deficiency anemia, megaloblastic anemia, sickle cell anemia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td class="canonical">gastroenteritis</td>
+      <td>bacterial gastroenteritis, infectious gastroenteritis, parasitic gastroenteritis, viral gastroenteritis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>16</td>
+      <td class="canonical">neonatal bowel obstruction</td>
+      <td>duodenal atresia, gastrointestinal obstruction, hirschsprung disease, intestinal atresia, malrotation, malrotation with midgut volvulus, meconium ileus, meconium plug syndrome, meconium-ileal atresia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>17</td>
+      <td class="canonical">colorectal adenoma</td>
+      <td>adenomatous polyp, tubular adenoma, tubulovillous adenoma, villous adenoma</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>18</td>
+      <td class="canonical">bacterial enteritis</td>
+      <td>campylobacter, campylobacter enteritis, e coli, salmonella, salmonella enteritis, shigella</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>19</td>
+      <td class="canonical">antidepressants</td>
+      <td>antidepressant overdose, maoi, selective serotonin reuptake inhibitor, snri, ssri, ssri overdose, tca, tricyclic antidepressant overdose, tricyclic antidepressants</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>20</td>
+      <td class="canonical">peripheral artery disease</td>
+      <td>claudication, critical limb ischemia, femoral artery occlusion, iliac artery stenosis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>21</td>
+      <td class="canonical">parkinsonism</td>
+      <td>drug-induced parkinsonism, neuroleptic-induced parkinsonism, pseudoparkinsonism</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>22</td>
+      <td class="canonical">extrapyramidal side effects</td>
+      <td>acute dystonic reaction, akathisia, dystonia, neuroleptic-induced parkinsonism, pseudoparkinsonism, tardive dyskinesia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>23</td>
+      <td class="canonical">hypertension</td>
+      <td>essential hypertension, malignant hypertension, medication-induced hypertension, primary hypertension, renovascular hypertension, secondary hypertension</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>24</td>
+      <td class="canonical">thyroid disease</td>
+      <td>congenital hypothyroidism, goiter, hyperthyroidism, hypothyroidism, neonatal thyrotoxicosis, thyroid storm, thyrotoxicosis, transient hypothyroidism</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Neuromuscular</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">myopathy</td>
+      <td>becker muscular dystrophy, congenital myopathy, dermatomyositis, duchenne muscular dystrophy, inflammatory myopathy, limb girdle muscular dystrophy, muscular dystrophy, myositis, myotonic dystrophy, polymyositis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">anterior horn cell disease</td>
+      <td>amyotrophic lateral sclerosis, poliomyelitis, progressive muscular atrophy, spinal muscular atrophy, spinal muscular atrophy type 1, spinal muscular atrophy type 2</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Peripheral neuropathy</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">peripheral neuropathy</td>
+      <td>alcoholic neuropathy, autonomic neuropathy, chemotherapy induced neuropathy, diabetic neuropathy, motor neuropathy, sensory neuropathy</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Infectious diseases (categorical)</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">infectious diseases</td>
+      <td>chikungunya, cholera, dengue, dengue fever, encephalitis, hepatitis a, hepatitis b, hepatitis c, hiv, leptospirosis, malaria, meningitis, sepsis, tuberculosis, typhoid, typhoid fever, yellow fever, zika</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Overdose / Substance</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">overdose</td>
+      <td>alcohol poisoning, drug intoxication, drug overdose, intoxication, medication overdose, opioid overdose, substance intoxication, substance overdose</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Psychiatric (categorical)</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">psychiatric episode</td>
+      <td>mental health crisis, psychiatric decompensation, psychiatric emergency, psychosis, psychotic episode, suicide attempt</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Metabolic (categorical)</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">metabolic disorder</td>
+      <td>acid base disorder, electrolyte imbalance, metabolic acidosis, metabolic alkalosis, metabolic issue</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Traumatic injury (categorical)</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">traumatic injury</td>
+      <td>blunt trauma, head injury, neurological trauma, physical trauma, trauma, traumatic brain injury</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Erectile dysfunction subtypes</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">erectile dysfunction</td>
+      <td>drug induced erectile dysfunction, hormonal erectile dysfunction, neurogenic erectile dysfunction, psychogenic erectile dysfunction, vascular erectile dysfunction</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Hematologic malignancy categories</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">leukemias</td>
+      <td>acute lymphoblastic leukemia, acute myeloid leukemia, chronic lymphocytic leukemia, chronic myeloid leukemia, hairy cell leukemia, leukemia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">lymphomas</td>
+      <td>burkitt lymphoma, chronic lymphocytic leukemia, diffuse large b cell lymphoma, follicular lymphoma, hodgkin lymphoma, lymphoma, mantle cell lymphoma, non hodgkin lymphoma</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">myeloproliferative disorders</td>
+      <td>chronic myeloid leukemia, essential thrombocythemia, myelofibrosis, myeloproliferative neoplasm, polycythemia vera</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Reactive / Inflammatory (categorical)</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">immune response to an inflammatory condition</td>
+      <td>inflammatory response, leukocytosis, reactive leukocytosis, reactive lymphocytosis, secondary leukocytosis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Illicit drug use (categorical)</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">illicit drug use</td>
+      <td>amphetamine intoxication, cannabis intoxication, cocaine intoxication, drug intoxication, methamphetamine intoxication, opioid intoxication, stimulant intoxication, synthetic cannabinoid intoxication</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Sleep disorders</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">circadian rhythm sleep disorder</td>
+      <td>advanced sleep phase syndrome, circadian rhythm disorder, delayed sleep phase syndrome, irregular sleep wake rhythm disorder, jet lag disorder, non 24 hour sleep wake disorder, shift work sleep disorder</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Endocarditis / pathogen-to-disease</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">infective endocarditis</td>
+      <td>bacterial endocarditis, staphylococcus aureus endocarditis, streptococcus sanguinis, streptococcus viridans, subacute bacterial endocarditis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Antipsychotic side effects (categorical)</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">side effects from antipsychotic medications</td>
+      <td>akathisia, antipsychotic side effects, drug induced parkinsonism, dystonia, extrapyramidal side effects, extrapyramidal symptoms, medication induced movement disorder, neuroleptic malignant syndrome, pseudoparkinsonism, tardive dyskinesia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">dopamine antagonist</td>
+      <td>drug induced parkinsonism, extrapyramidal symptoms, medication induced movement disorder, neuroleptic malignant syndrome, tardive dyskinesia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Stroke subtypes</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">stroke</td>
+      <td>cryptogenic stroke, embolic stroke, hemorrhagic stroke, ischemic stroke, lacunar stroke, thrombotic stroke</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">cerebrovascular accident</td>
+      <td>cryptogenic stroke, embolic stroke, hemorrhagic stroke, ischemic stroke, lacunar stroke, thrombotic stroke</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Food poisoning (categorical)</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">food poisoning</td>
+      <td>botulism, campylobacter, ciguatera fish poisoning, ciguatera poisoning, salmonella, scombroid fish poisoning, scombroid poisoning, shellfish poisoning</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Allergic reaction subtypes</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">allergic reaction</td>
+      <td>anaphylactic reaction, anaphylactic shock, anaphylaxis, drug allergy, food allergy, shellfish allergy</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Medication side effects (categorical)</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">medication side effects</td>
+      <td>adverse drug reaction, antibiotic associated diarrhea, anticholinergic poisoning, anticholinergic syndrome, anticholinergic toxicity, drug reaction, drug side effect, drug side effects, medication side effect</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Intra-abdominal infection subtypes</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">intra abdominal infection</td>
+      <td>abdominal abscess, intra abdominal abscess, pelvic abscess, peritonitis, subphrenic abscess</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Pelvic floor / Gynecological</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">pelvic floor dysfunction</td>
+      <td>levator ani syndrome, pelvic floor myalgia, vaginismus, vestibulodynia, vulvodynia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">vulvodynia</td>
+      <td>generalized vulvodynia, provoked vestibulodynia, vestibulodynia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Round 4 additions (cases 300-399)</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">acute coronary syndrome</td>
+      <td>myocardial infarction, non st elevation myocardial infarction, nstemi, st elevation myocardial infarction, stemi, unstable angina</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td class="canonical">pulmonary embolism</td>
+      <td>pulmonary infarction, pulmonary thromboembolism</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td class="canonical">congestive heart failure</td>
+      <td>cardiogenic pulmonary edema, diastolic heart failure, left heart failure, left sided heart failure, pulmonary edema, right heart failure, right sided heart failure, systolic heart failure</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td class="canonical">lung cancer</td>
+      <td>adenocarcinoma of lung, bronchial carcinoma, bronchogenic cancer, bronchogenic carcinoma, non small cell lung cancer, small cell lung cancer, squamous cell carcinoma of lung</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td class="canonical">asthma</td>
+      <td>acute asthma, acute asthma attack, acute bronchospasm, allergic asthma, asthma exacerbation, bronchial asthma, exercise induced asthma, status asthmaticus</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td class="canonical">bronchitis</td>
+      <td>acute bronchitis, chronic bronchitis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td class="canonical">skull fracture</td>
+      <td>basilar skull fracture, depressed skull fracture, temporal bone fracture</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td class="canonical">intracranial hemorrhage</td>
+      <td>cerebral hemorrhage, epidural hematoma, intracerebral hemorrhage, subarachnoid hemorrhage, subdural hematoma</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td class="canonical">intracranial infection</td>
+      <td>brain abscess, cerebral abscess, encephalitis, meningitis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td class="canonical">renal disease</td>
+      <td>acute kidney injury, chronic kidney disease, glomerulonephritis, nephritis, nephrotic syndrome, renal failure</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td class="canonical">electrolyte abnormalities</td>
+      <td>electrolyte imbalance, hypercalcemia, hyperkalemia, hypernatremia, hypocalcemia, hypokalemia, hypomagnesemia, hyponatremia, magnesium deficiency</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td class="canonical">nutritional deficiencies</td>
+      <td>folate deficiency, iron deficiency, iron deficiency anemia, nutritional deficiency anemia, pernicious anemia, thiamine deficiency, vitamin b12 deficiency, vitamin deficiency</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td class="canonical">glomerulonephritis</td>
+      <td>acute poststreptococcal glomerulonephritis, iga nephropathy, lupus nephritis, membranoproliferative glomerulonephritis, membranous nephropathy, poststreptococcal glomerulonephritis, rapidly progressive glomerulonephritis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td class="canonical">hyperthyroidism</td>
+      <td>graves disease, thyroid storm, thyrotoxicosis, toxic adenoma, toxic multinodular goiter</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td class="canonical">megaloblastic anemia</td>
+      <td>b12 deficiency anemia, folate deficiency anemia, pernicious anemia, vitamin b12 deficiency</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Vertigo / Vestibular</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">vertigo</td>
+      <td>benign paroxysmal positional vertigo, bppv, central vertigo, labyrinthitis, meniere disease, positional vertigo, vestibular neuritis, vestibular neuronitis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Syncope</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">syncope</td>
+      <td>cardiac syncope, carotid sinus syncope, neurocardiogenic syncope, neurologic syncope, orthostatic syncope, reflex syncope, vasovagal syncope</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Tuberculosis subtypes</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">tuberculosis</td>
+      <td>genitourinary tuberculosis, intestinal tuberculosis, miliary tuberculosis, pott disease, pulmonary tuberculosis, renal tuberculosis, skeletal tuberculosis, spinal tuberculosis, tuberculosis of lumbar vertebrae, tuberculous meningitis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Fracture subtypes</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">fracture</td>
+      <td>ankle fracture, cervical fracture, clavicle fracture, compression fracture, femur fracture, hip fracture, humerus fracture, pathological fracture, radial fracture, radius fracture, rib fracture, skull fracture, stress fracture, tibia fracture, ulna fracture, vertebral fracture</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Incontinence</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">urinary incontinence</td>
+      <td>functional incontinence, mixed incontinence, mixed urinary incontinence, overflow incontinence, stress incontinence, stress urinary incontinence, urge incontinence</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Hepatitis</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">hepatitis</td>
+      <td>alcoholic hepatitis, autoimmune hepatitis, drug induced hepatitis, hepatitis a, hepatitis b, hepatitis c, hepatitis d, hepatitis e, toxic hepatitis, viral hepatitis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Obesity subtypes</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">obesity</td>
+      <td>cortisol obesity, gonadal obesity, hypothalamic obesity, metabolic syndrome, morbid obesity, pancreatic obesity, simple obesity</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Disc / Spine</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">spinal disc disease</td>
+      <td>cervical herniated disc, degenerative disc disease, disc herniation, disk herniation, herniated disc, intervertebral disk hernia, lumbar disc herniation, spinal stenosis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Pyelonephritis</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">pyelonephritis</td>
+      <td>acute nephropyelitis, acute pyelonephritis, chronic nephropyelitis, chronic pyelonephritis, kidney infection, upper urinary tract infection</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Brain tumors</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">brain tumor</td>
+      <td>astrocytoma, brain neoplasm, cerebral neoplasm, cns tumor, glioblastoma, glioma, intracranial neoplasm, intracranial tumor, medulloblastoma, meningioma</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Esophageal disease</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">esophageal disease</td>
+      <td>achalasia, barrett esophagus, esophageal cancer, esophageal hiatal hernia, esophageal motility disorder, esophageal spasm, esophageal stricture, esophagitis, gastroesophageal reflux disease</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Colorectal neoplasms</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">colorectal neoplasm</td>
+      <td>adenomatous polyp, colon cancer, colonic polyp, colorectal adenoma, colorectal cancer, polyp of colon, rectal cancer, tumor of the colon</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Inflammatory bowel disease</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">inflammatory bowel disease</td>
+      <td>colitis, crohn disease, crohns disease, inflammatory bowel syndrome, ulcerative colitis</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+  <h3 class="cat-head hier">Cyanosis</h3>
+  <table>
+    <tr><th class="hier" style="width:30px;">#</th><th class="hier" style="width:22%;">Supertype (Parent)</th><th class="hier" style="width:44%;">Subtypes (Children)</th><th class="hier" style="width:16%;">Add Missing</th><th class="hier">Flag Issue</th></tr>
+    <tr>
+      <td>1</td>
+      <td class="canonical">cyanosis</td>
+      <td>central cyanosis, methemoglobinemia, mixed cyanosis, peripheral cyanosis, sulfhemoglobinemia</td>
+      <td><input type="text" class="alias-add" placeholder="+ add subtype"></td>
+      <td><input type="text" class="notes" placeholder="Issue?"></td>
+    </tr>
+  </table>
+</div>
+
+<div class="actions">
+  <button class="btn btn-primary" onclick="downloadForm()">Download as HTML</button>
+  <button class="btn btn-secondary" onclick="window.print()">Print</button>
+</div>
+
+<script>
+function downloadForm() {
+  const name = document.getElementById('reviewer-name').value || 'annotator';
+  const clone = document.documentElement.cloneNode(true);
+  const html = '<!DOCTYPE html>' + clone.outerHTML;
+  const blob = new Blob([html], {type: 'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'synonym_review_' + name.replace(/\s+/g, '_').toLowerCase() + '.html';
+  a.click();
+}
+</script>
+
+</body>
+</html>

@@ -506,6 +506,148 @@ class OllamaBackend(InferenceBackend):
 
 
 # =============================================================================
+# RunPod / Remote vLLM Backend
+# =============================================================================
+
+class RunPodBackend(InferenceBackend):
+    """
+    Remote inference via OpenAI-compatible API (RunPod vLLM, or any endpoint).
+
+    Works with RunPod persistent pods running vLLM, RunPod Serverless,
+    or any service exposing the OpenAI chat completions API.
+    """
+
+    def __init__(self, base_url: str = None, api_key: str = None,
+                 model_name: str = None, **kwargs):
+        import os
+        self.api_key = api_key or os.environ.get('RUNPOD_API_KEY', '')
+        self.model_name = model_name or os.environ.get('RUNPOD_MODEL', 'default')
+        self.current_model: Optional[str] = None
+
+        # Support multiple URL formats
+        if base_url:
+            self.base_url = base_url.rstrip('/')
+        else:
+            endpoint_id = os.environ.get('RUNPOD_ENDPOINT_ID', '')
+            if endpoint_id:
+                self.base_url = f"https://api.runpod.ai/v2/{endpoint_id}/openai/v1"
+            else:
+                self.base_url = os.environ.get('INFERENCE_URL', 'http://localhost:8000/v1')
+
+    def _headers(self) -> Dict[str, str]:
+        h = {"Content-Type": "application/json"}
+        if self.api_key:
+            h["Authorization"] = f"Bearer {self.api_key}"
+        return h
+
+    def is_available(self) -> bool:
+        try:
+            resp = requests.get(f"{self.base_url}/models",
+                                headers=self._headers(), timeout=10)
+            return resp.status_code == 200
+        except Exception:
+            return False
+
+    def get_available_models(self) -> List[str]:
+        try:
+            resp = requests.get(f"{self.base_url}/models",
+                                headers=self._headers(), timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                return [m['id'] for m in data.get('data', [])]
+        except Exception as e:
+            print(f"Failed to get RunPod models: {e}")
+        return [self.model_name] if self.model_name else []
+
+    def load(self, model_name: str, **kwargs) -> bool:
+        self.current_model = model_name
+        return True
+
+    def generate(self, prompt: str, config: SamplingConfig) -> str:
+        return self.generate_chat(
+            [{"role": "user", "content": prompt}], config
+        )
+
+    def generate_chat(self, messages: List[Dict[str, str]],
+                      config: SamplingConfig) -> str:
+        try:
+            payload = {
+                "model": self.current_model or self.model_name,
+                "messages": messages,
+                "temperature": config.temperature,
+                "top_p": config.top_p,
+                "max_tokens": config.max_tokens,
+            }
+            resp = requests.post(
+                f"{self.base_url}/chat/completions",
+                headers=self._headers(), json=payload, timeout=300
+            )
+            if resp.status_code == 200:
+                return resp.json()["choices"][0]["message"]["content"]
+            else:
+                print(f"RunPod chat failed: {resp.status_code}")
+                return f"Error: {resp.status_code} {resp.text[:200]}"
+        except Exception as e:
+            print(f"RunPod chat error: {e}")
+            return f"Error: {str(e)}"
+
+    def generate_chat_stream(self, messages: List[Dict[str, str]],
+                             config: SamplingConfig,
+                             token_callback: Optional[Callable[[str], None]] = None) -> str:
+        try:
+            payload = {
+                "model": self.current_model or self.model_name,
+                "messages": messages,
+                "temperature": config.temperature,
+                "top_p": config.top_p,
+                "max_tokens": config.max_tokens,
+                "stream": True,
+            }
+            resp = requests.post(
+                f"{self.base_url}/chat/completions",
+                headers=self._headers(), json=payload,
+                timeout=300, stream=True,
+            )
+            if resp.status_code != 200:
+                return f"Error: {resp.status_code}"
+
+            chunks = []
+            for line in resp.iter_lines():
+                if not line:
+                    continue
+                text = line.decode('utf-8', errors='ignore')
+                text = text.removeprefix("data: ").strip()
+                if text == "[DONE]":
+                    break
+                try:
+                    data = json.loads(text)
+                    delta = data.get("choices", [{}])[0].get("delta", {})
+                    token = delta.get("content", "")
+                    if token:
+                        chunks.append(token)
+                        if token_callback:
+                            token_callback(token)
+                except json.JSONDecodeError:
+                    continue
+            return "".join(chunks)
+        except Exception as e:
+            print(f"RunPod stream error: {e}")
+            return f"Error: {str(e)}"
+
+    def unload(self) -> None:
+        self.current_model = None
+
+    def get_info(self) -> Dict[str, Any]:
+        return {
+            "backend": "runpod",
+            "base_url": self.base_url,
+            "available": self.is_available(),
+            "current_model": self.current_model,
+            "available_models": self.get_available_models(),
+        }
+
+
+# =============================================================================
 # Backend Factory
 # =============================================================================
 
@@ -523,6 +665,8 @@ def create_backend(backend_type: str = "ollama", **kwargs) -> InferenceBackend:
     if backend_type == "ollama":
         base_url = kwargs.get("base_url", "http://localhost:11434")
         return OllamaBackend(base_url=base_url)
+    elif backend_type == "runpod":
+        return RunPodBackend(**kwargs)
     elif backend_type == "vllm":
         # Lazy import — vllm is only available on Colab/GPU systems
         from benchmark.vllm_backend import VLLMBackend

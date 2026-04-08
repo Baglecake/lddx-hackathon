@@ -24,7 +24,7 @@ sys.path.insert(0, PIPELINE_MODULES)
 from ddx_runner import DDxSystem
 from ddx_core import ModelConfig, OllamaModelManager, DynamicAgentGenerator
 from ddx_sliding_context import TranscriptManager
-from inference_backends import MLXBackend
+from inference_backends import MLXBackend, RunPodBackend
 
 # ---------------------------------------------------------------------------
 # Global state
@@ -53,6 +53,17 @@ def get_mlx_models() -> List[str]:
     """Query locally cached MLX models."""
     try:
         backend = MLXBackend()
+        if backend.is_available():
+            return backend.get_available_models()
+    except Exception:
+        pass
+    return []
+
+
+def get_runpod_models() -> List[str]:
+    """Query RunPod endpoint for available models."""
+    try:
+        backend = RunPodBackend()
         if backend.is_available():
             return backend.get_available_models()
     except Exception:
@@ -380,11 +391,20 @@ def index():
     ui.html(CUSTOM_CSS)
 
     # -- State for this page --
-    ollama_url = {'value': 'http://localhost:11434'}
-    active_backend = {'value': 'ollama'}
-    ollama_models_cache = {'value': prioritized_models(get_ollama_models())}
+    default_backend = os.environ.get('INFERENCE_BACKEND', 'ollama')
+    ollama_url = {'value': os.environ.get('INFERENCE_URL', 'http://localhost:11434')}
+    active_backend = {'value': default_backend}
+    ollama_models_cache = {'value': prioritized_models(get_ollama_models(ollama_url['value']))}
     mlx_models_cache = {'value': get_mlx_models()}
-    models_list = {'value': list(ollama_models_cache['value'])}
+    runpod_models_cache = {'value': get_runpod_models()}
+
+    # Set initial model list based on default backend
+    if default_backend == 'mlx':
+        models_list = {'value': list(mlx_models_cache['value'])}
+    elif default_backend == 'runpod':
+        models_list = {'value': list(runpod_models_cache['value'])}
+    else:
+        models_list = {'value': list(ollama_models_cache['value'])}
     running = {'value': False}
 
     # ============================
@@ -425,6 +445,9 @@ def index():
                 if e.value == 'mlx':
                     models = mlx_models_cache['value']
                     url_input.disable()
+                elif e.value == 'runpod':
+                    models = runpod_models_cache['value']
+                    url_input.disable()
                 else:
                     models = ollama_models_cache['value']
                     url_input.enable()
@@ -441,8 +464,8 @@ def index():
                 innovative_select.update()
 
             backend_toggle = ui.toggle(
-                {'ollama': 'Ollama', 'mlx': 'MLX (Apple Silicon)'},
-                value='ollama',
+                {'ollama': 'Ollama', 'mlx': 'MLX (Apple Silicon)', 'runpod': 'RunPod (Cloud)'},
+                value=default_backend,
                 on_change=on_backend_change,
             ).classes('w-full')
 
@@ -474,6 +497,9 @@ def index():
                     if active_backend['value'] == 'mlx':
                         models = get_mlx_models()
                         mlx_models_cache['value'] = models
+                    elif active_backend['value'] == 'runpod':
+                        models = get_runpod_models()
+                        runpod_models_cache['value'] = models
                     else:
                         models = prioritized_models(get_ollama_models(url_input.value))
                         ollama_models_cache['value'] = models
@@ -1005,14 +1031,20 @@ def main():
     print('Local-DDx — Starting web interface')
     print('=' * 50)
 
+    port = int(os.environ.get('PORT', 8080))
+    host = os.environ.get('HOST', '127.0.0.1')
+
     models = get_ollama_models()
     print(f'Ollama models found: {len(models)}')
     for m in models[:5]:
         print(f'  - {m}')
 
+    print(f'Starting on {host}:{port}')
+
     ui.run(
         title='Local-DDx',
-        port=8080,
+        port=port,
+        host=host,
         dark=True,
         reload=False,
         favicon='🩺',
