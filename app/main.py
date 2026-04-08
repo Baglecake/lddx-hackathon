@@ -394,7 +394,7 @@ def render_nav(active: str = ''):
             ui.link('Local-DDx', '/').classes('text-xl font-bold no-underline').style(
                 'color: #4f8cff;'
             )
-            for label, href in [('Pipeline', '/pipeline'), ('Review', '/review')]:
+            for label, href in [('Pipeline', '/pipeline'), ('History', '/history'), ('Review', '/review')]:
                 style = 'color: #ffffff; font-weight: 600;' if active == label else 'color: #8888aa;'
                 ui.link(label, href).classes('text-sm no-underline').style(style)
 
@@ -426,6 +426,9 @@ def landing():
                 ui.button('Run Pipeline', icon='play_arrow', on_click=lambda: ui.navigate.to('/pipeline')).props(
                     'size=lg color=primary'
                 )
+                ui.button('Case History', icon='history', on_click=lambda: ui.navigate.to('/history')).props(
+                    'size=lg flat'
+                ).style('color: #ffd166;')
                 ui.button('Synonym Review', icon='rate_review', on_click=lambda: ui.navigate.to('/review')).props(
                     'size=lg flat'
                 ).style('color: #4ecdc4;')
@@ -1031,6 +1034,28 @@ def pipeline_page():
                     ui.label('Credibility scores not available').style('color: #8888aa;')
 
             ui.notify('Diagnosis complete', type='positive')
+
+            # Save to Supabase history
+            try:
+                from supabase_client import get_supabase
+                sb = get_supabase()
+                if sb:
+                    import json
+                    sb.table('case_runs').insert({
+                        'case_name': 'demo_case',
+                        'patient_info': case_text,
+                        'specialists': json.loads(json.dumps(
+                            analysis.get('specialists', []), default=str
+                        )),
+                        'pipeline_mode': mode,
+                        'backend': backend,
+                        'model_name': conservative,
+                        'result': json.loads(json.dumps(result, default=str)),
+                        'duration_seconds': result.get('total_duration', 0),
+                    }).execute()
+            except Exception as e:
+                print(f"Failed to save to history: {e}")
+
         else:
             error_msg = result.get('error', 'Unknown error') if result else 'Pipeline failed'
             status_label.text = 'Error'
@@ -1066,6 +1091,7 @@ def pipeline_page():
 # Review page (collaborative synonym review)
 # ---------------------------------------------------------------------------
 import review  # noqa: F401 — registers the /review route
+import history  # noqa: F401 — registers the /history route
 
 # ---------------------------------------------------------------------------
 # Entry point
