@@ -394,7 +394,7 @@ def render_nav(active: str = ''):
             ui.link('Local-DDx', '/').classes('text-xl font-bold no-underline').style(
                 'color: #4f8cff;'
             )
-            for label, href in [('Pipeline', '/pipeline'), ('History', '/history'), ('Review', '/review')]:
+            for label, href in [('Pipeline', '/pipeline'), ('History', '/history'), ('Review', '/review'), ('Assistant', '/assistant')]:
                 style = 'color: #ffffff; font-weight: 600;' if active == label else 'color: #8888aa;'
                 ui.link(label, href).classes('text-sm no-underline').style(style)
 
@@ -1092,6 +1092,7 @@ def pipeline_page():
 # ---------------------------------------------------------------------------
 import review  # noqa: F401 — registers the /review route
 import history  # noqa: F401 — registers the /history route
+import assistant  # noqa: F401 — registers the /assistant route
 
 # ---------------------------------------------------------------------------
 # Entry point
