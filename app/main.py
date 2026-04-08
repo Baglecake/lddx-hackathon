@@ -579,6 +579,29 @@ def pipeline_page():
                 placeholder='Enter clinical case presentation...',
             ).classes('w-full').style('min-height: 180px;')
 
+            # -- Image Upload (optional) --
+            ui.label('Diagnostic Image (optional)').classes('text-sm font-semibold').style(
+                'color: #8888aa; letter-spacing: 0.05em; margin-top: 8px;'
+            )
+            uploaded_image = {'data': None, 'name': None}
+            image_label = ui.label('No image uploaded').classes('text-xs').style('color: #555577;')
+
+            async def handle_upload(e):
+                if e.content:
+                    import base64
+                    content = e.content.read()
+                    b64 = base64.b64encode(content).decode()
+                    uploaded_image['data'] = f"data:image/png;base64,{b64}"
+                    uploaded_image['name'] = e.name
+                    image_label.text = f'Uploaded: {e.name} ({len(content) // 1024}KB)'
+                    image_label.style('color: #4ecdc4;')
+
+            ui.upload(
+                on_upload=handle_upload,
+                auto_upload=True,
+                max_file_size=10_000_000,
+            ).props('accept="image/*" flat dense').classes('w-full').style('max-height: 40px;')
+
             # -- Example Cases --
             with ui.expansion('Example Cases', icon='description').classes('w-full').style('color: #8888aa;'):
                 for name, text in EXAMPLES.items():
@@ -701,7 +724,60 @@ def pipeline_page():
             run_button.enable()
             return
 
-        init_label.text = f'{backend.upper()} ready. Analyzing case...'
+        init_label.text = f'{backend.upper()} ready.'
+        status_label.text = 'Processing...'
+
+        # If image uploaded, get AI description and append to case text
+        if uploaded_image['data'] and backend == 'runpod':
+            init_label.text = 'Analyzing uploaded image...'
+            try:
+                import requests as req_lib
+                inference_url = os.environ.get('INFERENCE_URL', '')
+                api_key = os.environ.get('RUNPOD_API_KEY', '')
+                headers = {"Content-Type": "application/json"}
+                if api_key:
+                    headers["Authorization"] = f"Bearer {api_key}"
+
+                image_prompt = [{
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": uploaded_image['data']}},
+                        {"type": "text", "text": (
+                            "You are a radiologist/pathologist. Describe this diagnostic image in detail. "
+                            "Include: modality (X-ray, CT, MRI, histology, etc.), anatomical region, "
+                            "key findings, and any abnormalities. Be specific and clinical."
+                        )}
+                    ]
+                }]
+
+                resp = await asyncio.to_thread(
+                    lambda: req_lib.post(
+                        f"{inference_url}/chat/completions",
+                        headers=headers,
+                        json={
+                            "model": os.environ.get('RUNPOD_MODEL', 'google/gemma-4-26b-a4b-it'),
+                            "messages": image_prompt,
+                            "max_tokens": 512,
+                            "temperature": 0.3,
+                        },
+                        timeout=120,
+                    )
+                )
+
+                if resp.status_code == 200:
+                    image_desc = resp.json()["choices"][0]["message"]["content"]
+                    case_text = (
+                        f"{case_text}\n\n"
+                        f"--- DIAGNOSTIC IMAGING ---\n"
+                        f"Image: {uploaded_image['name']}\n"
+                        f"AI Image Analysis:\n{image_desc}"
+                    )
+                    init_label.text = 'Image analyzed. Generating specialist team...'
+                else:
+                    init_label.text = f'Image analysis failed ({resp.status_code}), proceeding without it.'
+            except Exception as e:
+                init_label.text = f'Image analysis error: {str(e)[:80]}. Proceeding without it.'
+
         status_label.text = 'Analyzing case...'
 
         # Analyze case
