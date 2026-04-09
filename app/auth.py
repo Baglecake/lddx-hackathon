@@ -107,7 +107,7 @@ def login_page():
                             app.storage.user['access_token'] = result.session.access_token
                             app.storage.user['user_email'] = result.user.email
                             app.storage.user['user_id'] = str(result.user.id)
-                            ui.navigate.to('/pipeline')
+                            ui.navigate.to('/dashboard')
                         else:
                             error_label.text = 'Login failed'
                             error_label.set_visibility(True)
