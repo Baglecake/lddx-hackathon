@@ -387,6 +387,10 @@ CUSTOM_CSS = """
 
 def render_nav(active: str = ''):
     """Render the shared navigation header and floating assistant widget."""
+    from auth import get_current_user
+
+    user = get_current_user()
+
     with ui.header().classes('items-center justify-between px-6 py-3').style(
         'background: #12122a; border-bottom: 1px solid #333355;'
     ):
@@ -397,6 +401,21 @@ def render_nav(active: str = ''):
             for label, href in [('Pipeline', '/pipeline'), ('History', '/history'), ('Review', '/review'), ('Guide', '/guide')]:
                 style = 'color: #ffffff; font-weight: 600;' if active == label else 'color: #8888aa;'
                 ui.link(label, href).classes('text-sm no-underline').style(style)
+
+        # Auth section (right side)
+        with ui.row().classes('items-center gap-3'):
+            if user:
+                ui.label(user['email']).classes('text-xs').style('color: #8888aa;')
+
+                def logout():
+                    app.storage.user.clear()
+                    ui.navigate.to('/')
+
+                ui.button('Logout', icon='logout', on_click=logout).props(
+                    'flat dense size=sm'
+                ).style('color: #8888aa;')
+            else:
+                ui.link('Sign in', '/login').classes('text-sm no-underline').style('color: #8888aa;')
 
     # Floating assistant chat bubble (on every page)
     from assistant import render_assistant_widget
@@ -444,6 +463,12 @@ def landing():
 
 @ui.page('/pipeline')
 def pipeline_page():
+    # Auth guard
+    from auth import require_auth
+    user = require_auth()
+    if not user:
+        return
+
     # Inject custom CSS
     ui.html(CUSTOM_CSS)
     render_nav(active='Pipeline')
@@ -1115,13 +1140,14 @@ def pipeline_page():
 
             ui.notify('Diagnosis complete', type='positive')
 
-            # Save to Supabase history
+            # Save to Supabase history (with user_id for RLS)
             try:
                 from supabase_client import get_supabase
                 sb = get_supabase()
-                if sb:
+                if sb and user:
                     import json
                     sb.table('case_runs').insert({
+                        'user_id': user['id'],
                         'case_name': 'demo_case',
                         'patient_info': case_text,
                         'specialists': json.loads(json.dumps(
@@ -1170,6 +1196,7 @@ def pipeline_page():
 # ---------------------------------------------------------------------------
 # Review page (collaborative synonym review)
 # ---------------------------------------------------------------------------
+import auth  # noqa: F401 — registers /login and /signup routes
 import review  # noqa: F401 — registers the /review route
 import history  # noqa: F401 — registers the /history route
 import guide  # noqa: F401 — registers the /guide route
@@ -1200,6 +1227,7 @@ def main():
         dark=True,
         reload=False,
         favicon='🩺',
+        storage_secret=os.environ.get('STORAGE_SECRET', 'lddx-dev-secret-change-me'),
     )
 
 

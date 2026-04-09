@@ -17,6 +17,11 @@ from supabase_client import get_supabase
 
 @ui.page('/history')
 def history_page():
+    from auth import require_auth
+    user = require_auth()
+    if not user:
+        return
+
     from main import render_nav
     render_nav(active='History')
 
