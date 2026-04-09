@@ -39,7 +39,16 @@ def get_current_user() -> Optional[Dict]:
 
 
 def require_auth():
-    """Redirect to login if not authenticated. Call at top of protected pages."""
+    """Redirect to login if not authenticated. Call at top of protected pages.
+
+    If Supabase is not configured (local dev), returns a dummy user so the
+    app works without auth.
+    """
+    sb = get_supabase()
+    if not sb:
+        # No Supabase = local dev mode, skip auth
+        return {'id': 'local-user', 'email': 'local'}
+
     user = get_current_user()
     if not user:
         ui.navigate.to('/login')
