@@ -1288,6 +1288,15 @@ def main():
         reload=False,
         favicon='🩺',
         storage_secret=os.environ.get('STORAGE_SECRET', 'lddx-dev-secret-change-me'),
+        socket_io_js_options='{'
+            '"reconnection": true, '
+            '"reconnectionAttempts": 100, '
+            '"reconnectionDelay": 500, '
+            '"reconnectionDelayMax": 3000, '
+            '"timeout": 120000, '
+            '"pingTimeout": 120000, '
+            '"pingInterval": 5000'
+        '}',
     )
 
 
