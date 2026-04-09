@@ -973,15 +973,28 @@ def pipeline_page():
             del agent_bubbles[agent_name]
 
         # Poll the event queue
+        # Track client health — if browser disconnects, keep running but skip UI
+        import time as _time
+        client_alive = True
+        pipeline_start = _time.time()
+        last_heartbeat = pipeline_start
+
         while True:
-            # Drain all available events in a batch for efficiency
             events = []
             try:
                 events.append(event_queue.get_nowait())
-                # Grab more if available
                 while not event_queue.empty():
                     events.append(event_queue.get_nowait())
             except queue.Empty:
+                # Heartbeat: update status every 10s to keep websocket alive
+                if client_alive and _time.time() - last_heartbeat > 10:
+                    try:
+                        elapsed = int(_time.time() - pipeline_start)
+                        mins, secs = divmod(elapsed, 60)
+                        status_label.text = f'Running... {agent_count} responses ({mins}:{secs:02d})'
+                        last_heartbeat = _time.time()
+                    except RuntimeError:
+                        client_alive = False
                 await asyncio.sleep(0.15)
                 continue
 
@@ -991,51 +1004,63 @@ def pipeline_page():
                     done = True
                     break
 
-                elif event_type == 'TOKEN':
-                    agent_name, token_text = val1, val2
-                    info = ensure_bubble(agent_name)
-                    info['text'] += token_text
-                    # Update markdown content (renders live)
-                    info['content_el'].set_content(info['text'])
+                if not client_alive:
+                    continue  # drain queue but skip UI updates
 
-                elif event_type == 'PROGRESS':
-                    msg, response = val1, val2
-                    if response is not None:
-                        agent_count += 1
-                        finalize_bubble(response.agent_name, response)
-                        status_label.text = f'Running... {agent_count} responses'
-                    elif msg.startswith('ROUND_START:'):
-                        round_key = msg.split(':')[1]
-                        if round_key not in shown_rounds:
-                            shown_rounds.add(round_key)
-                            num, title, desc = ROUND_INFO.get(
-                                round_key, ('?', round_key.replace('_', ' ').title(), '')
-                            )
+                try:
+                    if event_type == 'TOKEN':
+                        agent_name, token_text = val1, val2
+                        info = ensure_bubble(agent_name)
+                        info['text'] += token_text
+                        info['content_el'].set_content(info['text'])
+
+                    elif event_type == 'PROGRESS':
+                        msg, response = val1, val2
+                        if response is not None:
+                            agent_count += 1
+                            finalize_bubble(response.agent_name, response)
+                            status_label.text = f'Running... {agent_count} responses'
+                        elif msg.startswith('ROUND_START:'):
+                            round_key = msg.split(':')[1]
+                            if round_key not in shown_rounds:
+                                shown_rounds.add(round_key)
+                                num, title, desc = ROUND_INFO.get(
+                                    round_key, ('?', round_key.replace('_', ' ').title(), '')
+                                )
+                                with live_container:
+                                    with ui.row().classes('w-full items-center gap-3').style(
+                                        'background: linear-gradient(135deg, rgba(79,140,255,0.20), rgba(79,140,255,0.08));'
+                                        'border: 2px solid rgba(79,140,255,0.5);'
+                                        'border-radius: 10px; padding: 18px 22px; margin: 32px 0 14px 0;'
+                                    ):
+                                        ui.html(
+                                            f'<div style="background:#4f8cff;color:white;border-radius:50%;'
+                                            f'width:38px;height:38px;display:flex;align-items:center;'
+                                            f'justify-content:center;font-weight:800;font-size:18px;'
+                                            f'flex-shrink:0;">{num}</div>'
+                                        )
+                                        ui.label(title).style(
+                                            'color: #ffffff; font-weight: 700; font-size: 20px;'
+                                        )
+                                        ui.label(desc).style(
+                                            'color: #8888aa; font-size: 13px; margin-left: auto; font-style: italic;'
+                                        )
+                        elif msg.startswith('ROUND_COMPLETE:'):
                             with live_container:
-                                with ui.row().classes('w-full items-center gap-3').style(
-                                    'background: linear-gradient(135deg, rgba(79,140,255,0.20), rgba(79,140,255,0.08));'
-                                    'border: 2px solid rgba(79,140,255,0.5);'
-                                    'border-radius: 10px; padding: 18px 22px; margin: 32px 0 14px 0;'
-                                ):
-                                    ui.html(
-                                        f'<div style="background:#4f8cff;color:white;border-radius:50%;'
-                                        f'width:38px;height:38px;display:flex;align-items:center;'
-                                        f'justify-content:center;font-weight:800;font-size:18px;'
-                                        f'flex-shrink:0;">{num}</div>'
-                                    )
-                                    ui.label(title).style(
-                                        'color: #ffffff; font-weight: 700; font-size: 20px;'
-                                    )
-                                    ui.label(desc).style(
-                                        'color: #8888aa; font-size: 13px; margin-left: auto; font-style: italic;'
-                                    )
-                    elif msg.startswith('ROUND_COMPLETE:'):
-                        round_name = msg.split(':')[1].replace('_', ' ').title()
-                        with live_container:
-                            ui.separator().style('border-color: #333355; margin: 8px 0;')
+                                ui.separator().style('border-color: #333355; margin: 8px 0;')
+                except RuntimeError as e:
+                    if 'client' in str(e).lower() or 'deleted' in str(e).lower():
+                        print(f'[LDDx] Browser disconnected — pipeline continues, results will be saved')
+                        client_alive = False
+                    else:
+                        raise
 
-            # Auto-scroll
-            live_feed.scroll_to(percent=1.0)
+            if client_alive:
+                try:
+                    live_feed.scroll_to(percent=1.0)
+                except RuntimeError:
+                    print(f'[LDDx] Browser disconnected during scroll — pipeline continues')
+                    client_alive = False
 
             if done:
                 break
@@ -1043,6 +1068,49 @@ def pipeline_page():
         thread.join(timeout=300)
         result = result_container[0]
         sess['last_result'] = result
+
+        # ---- Always save results (even if browser disconnected) ----
+        # 1. Auto-export to JSON file
+        if result and 'error' not in result:
+            try:
+                import json
+                export_dir = os.path.join(os.path.dirname(__file__), '..', 'exports')
+                os.makedirs(export_dir, exist_ok=True)
+                auto_path = os.path.join(export_dir, f'lddx_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json')
+                with open(auto_path, 'w') as f:
+                    json.dump(result, f, indent=2, default=str)
+                print(f'[LDDx] Auto-saved results to {auto_path}')
+            except Exception as e:
+                print(f'[LDDx] Auto-save failed: {e}')
+
+            # 2. Save to Supabase history
+            try:
+                from supabase_client import get_supabase
+                sb = get_supabase()
+                if sb and user:
+                    import json
+                    sb.table('case_runs').insert({
+                        'user_id': user['id'],
+                        'case_name': 'demo_case',
+                        'patient_info': case_text,
+                        'specialists': json.loads(json.dumps(
+                            analysis.get('specialists', []), default=str
+                        )),
+                        'pipeline_mode': mode,
+                        'backend': backend,
+                        'model_name': conservative,
+                        'result': json.loads(json.dumps(result, default=str)),
+                        'duration_seconds': result.get('total_duration', 0),
+                    }).execute()
+                    print(f'[LDDx] Saved to Supabase history')
+            except Exception as e:
+                print(f'[LDDx] Failed to save to history: {e}')
+
+        # ---- Update UI only if browser is still connected ----
+        if not client_alive:
+            print(f'[LDDx] Pipeline complete but browser gone — results saved to file and Supabase')
+            running['value'] = False
+            return
 
         if result and 'error' not in result:
             duration = result.get('total_duration', 0)
@@ -1152,28 +1220,6 @@ def pipeline_page():
                     ui.label('Credibility scores not available').style('color: #8888aa;')
 
             ui.notify('Diagnosis complete', type='positive')
-
-            # Save to Supabase history (with user_id for RLS)
-            try:
-                from supabase_client import get_supabase
-                sb = get_supabase()
-                if sb and user:
-                    import json
-                    sb.table('case_runs').insert({
-                        'user_id': user['id'],
-                        'case_name': 'demo_case',
-                        'patient_info': case_text,
-                        'specialists': json.loads(json.dumps(
-                            analysis.get('specialists', []), default=str
-                        )),
-                        'pipeline_mode': mode,
-                        'backend': backend,
-                        'model_name': conservative,
-                        'result': json.loads(json.dumps(result, default=str)),
-                        'duration_seconds': result.get('total_duration', 0),
-                    }).execute()
-            except Exception as e:
-                print(f"Failed to save to history: {e}")
 
         else:
             error_msg = result.get('error', 'Unknown error') if result else 'Pipeline failed'
