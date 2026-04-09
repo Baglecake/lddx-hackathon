@@ -57,7 +57,7 @@ def dashboard_page():
 
                     # Find classrooms this user's reviewers belong to
                     reviewers = sb.table('reviewers').select(
-                        '*, classrooms(id, name, join_code, created_at)'
+                        '*, classrooms!reviewers_classroom_id_fkey(id, name, join_code, created_at)'
                     ).eq('name', user['email'].split('@')[0]).execute()
 
                     # Also check by user email pattern in name
