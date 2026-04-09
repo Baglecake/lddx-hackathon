@@ -27,11 +27,23 @@ from ddx_sliding_context import TranscriptManager
 from inference_backends import MLXBackend, RunPodBackend
 
 # ---------------------------------------------------------------------------
-# Global state
+# Per-session state (keyed by user ID — no globals shared across users)
 # ---------------------------------------------------------------------------
-ddx_system: Optional[DDxSystem] = None
-last_result: Optional[Dict[str, Any]] = None
-current_models: Dict[str, str] = {}
+
+_sessions: Dict[str, Dict[str, Any]] = {}
+_sessions_lock = threading.Lock()
+
+
+def _get_session(user_id: str) -> Dict[str, Any]:
+    """Get or create a per-user session store."""
+    with _sessions_lock:
+        if user_id not in _sessions:
+            _sessions[user_id] = {
+                'ddx_system': None,
+                'last_result': None,
+                'current_models': {},
+            }
+        return _sessions[user_id]
 mlx_backend: Optional[MLXBackend] = None
 
 # ---------------------------------------------------------------------------
@@ -82,18 +94,18 @@ def prioritized_models(models: List[str]) -> List[str]:
 # System initialization
 # ---------------------------------------------------------------------------
 
-def initialize_system(conservative: str, innovative: str, url: str, backend: str = "ollama") -> str:
-    """Initialize or reinitialize the DDx system."""
-    global ddx_system, current_models
+def initialize_system(user_id: str, conservative: str, innovative: str, url: str, backend: str = "ollama") -> str:
+    """Initialize or reinitialize the DDx system for a specific user session."""
+    sess = _get_session(user_id)
 
     cache_key = {
         'conservative': conservative, 'innovative': innovative,
         'url': url, 'backend': backend,
     }
-    if ddx_system and current_models == cache_key:
+    if sess['ddx_system'] and sess['current_models'] == cache_key:
         return "ready"
 
-    ddx_system = DDxSystem()
+    system = DDxSystem()
 
     configs = {
         'conservative_model': ModelConfig(
@@ -110,23 +122,23 @@ def initialize_system(conservative: str, innovative: str, url: str, backend: str
     if backend == "ollama":
         backend_kwargs['base_url'] = url
 
-    ddx_system.model_manager = OllamaModelManager(
+    system.model_manager = OllamaModelManager(
         configs, backend_type=backend, **backend_kwargs
     )
 
-    if not ddx_system.model_manager.initialize():
-        ddx_system = None
+    if not system.model_manager.initialize():
         return "error"
 
-    for model_id in ddx_system.model_manager.get_available_models():
-        ddx_system.model_manager.load_model(model_id)
+    for model_id in system.model_manager.get_available_models():
+        system.model_manager.load_model(model_id)
 
-    ddx_system.transcript = TranscriptManager()
-    ddx_system.agent_generator = DynamicAgentGenerator(
-        ddx_system.model_manager, ddx_system.transcript
+    system.transcript = TranscriptManager()
+    system.agent_generator = DynamicAgentGenerator(
+        system.model_manager, system.transcript
     )
 
-    current_models = cache_key
+    sess['ddx_system'] = system
+    sess['current_models'] = cache_key
     return "ready"
 
 # ---------------------------------------------------------------------------
@@ -707,7 +719,7 @@ def pipeline_page():
         return AGENT_COLORS[hash(name) % len(AGENT_COLORS)]
 
     async def handle_run():
-        global ddx_system, last_result
+        sess = _get_session(user['id'])
 
         if running['value']:
             ui.notify('Diagnosis already running', type='warning')
@@ -740,8 +752,8 @@ def pipeline_page():
                 f'Initializing {backend.upper()} backend...'
             ).classes('text-sm').style('color: #8888aa; padding: 8px;')
 
-        # Initialize in background thread
-        init_result = await asyncio.to_thread(initialize_system, conservative, innovative, url, backend)
+        # Initialize in background thread (per-user session)
+        init_result = await asyncio.to_thread(initialize_system, user['id'], conservative, innovative, url, backend)
 
         if init_result == 'error':
             status_label.text = 'Error'
@@ -810,6 +822,7 @@ def pipeline_page():
         status_label.text = 'Analyzing case...'
 
         # Analyze case
+        ddx_system = sess['ddx_system']
         try:
             analysis = await asyncio.to_thread(
                 ddx_system.analyze_case, case_text, "demo_case", 5
@@ -1029,7 +1042,7 @@ def pipeline_page():
 
         thread.join(timeout=300)
         result = result_container[0]
-        last_result = result
+        sess['last_result'] = result
 
         if result and 'error' not in result:
             duration = result.get('total_duration', 0)
@@ -1174,8 +1187,8 @@ def pipeline_page():
 
     # -- Export handler --
     async def handle_export():
-        global ddx_system, last_result
-        if ddx_system is None or last_result is None:
+        sess = _get_session(user['id'])
+        if sess['ddx_system'] is None or sess['last_result'] is None:
             ui.notify('No results to export', type='warning')
             return
 
@@ -1184,7 +1197,7 @@ def pipeline_page():
         filepath = os.path.join(export_dir, f'lddx_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json')
 
         try:
-            ddx_system.export_results(filepath)
+            sess['ddx_system'].export_results(filepath)
             ui.notify(f'Exported to {filepath}', type='positive')
         except Exception as e:
             ui.notify(f'Export failed: {e}', type='negative')

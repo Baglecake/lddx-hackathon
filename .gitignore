@@ -8,3 +8,5 @@ results/
 venv/
 .venv/
 Local-DDx-*.xlsx
+pitch-deck/node_modules/
+pitch-deck/package-lock.json
