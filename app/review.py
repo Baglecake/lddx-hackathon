@@ -538,11 +538,7 @@ def review_page():
         join_btn.on_click(do_join)
         create_btn.on_click(do_create)
 
-        # -- Auto-rejoin from saved session --
-        if _restore_session():
-            _enter_classroom()
-        else:
-            _refresh_my_classrooms()
+        # Auto-rejoin is deferred to after _load_others_and_show is defined (below)
 
         # ============================================================
         # REVIEW SECTIONS (inside main_content)
@@ -809,6 +805,12 @@ def review_page():
                 f'Synonym groups: {sum(len(v) for v in SYN_CATEGORIES.values())} | '
                 f'Hierarchy groups: {sum(len(v) for v in HIER_CATEGORIES.values())}'
             ).classes('text-xs').style('color: #555; margin-top: 8px;')
+
+        # -- Auto-rejoin from saved session (must be after _load_others_and_show is defined) --
+        if _restore_session():
+            _enter_classroom()
+        else:
+            _refresh_my_classrooms()
 
 
 # ---------------------------------------------------------------------------
