@@ -274,6 +274,71 @@ def review_page():
     sb = get_supabase()
     state = {'reviewer_id': None, 'name': None, 'classroom_id': None, 'classroom_name': None}
 
+    # ------------------------------------------------------------------
+    # Helper: persist / restore session so users survive page reloads
+    # ------------------------------------------------------------------
+    def _save_session():
+        app.storage.user['review_session'] = {
+            'reviewer_id': state['reviewer_id'],
+            'name': state['name'],
+            'classroom_id': state['classroom_id'],
+            'classroom_name': state['classroom_name'],
+        }
+
+    def _restore_session() -> bool:
+        """Try to restore a previous classroom session. Returns True on success."""
+        saved = app.storage.user.get('review_session')
+        if not saved or not sb:
+            return False
+        # Verify the classroom still exists
+        try:
+            cr = sb.table('classrooms').select('id, name, join_code').eq(
+                'id', saved['classroom_id']
+            ).execute()
+            if not cr.data:
+                return False
+            # Verify the reviewer still exists
+            rr = sb.table('reviewers').select('id').eq(
+                'id', saved['reviewer_id']
+            ).execute()
+            if not rr.data:
+                return False
+        except Exception:
+            return False
+        state.update(saved)
+        return True
+
+    def _clear_session():
+        app.storage.user.pop('review_session', None)
+        state.update({'reviewer_id': None, 'name': None, 'classroom_id': None, 'classroom_name': None})
+
+    def _get_user_classrooms():
+        """Fetch all classrooms this user's reviewers belong to."""
+        if not sb or not state['name']:
+            return []
+        try:
+            rr = sb.table('reviewers').select(
+                'id, classroom_id, classrooms!reviewers_classroom_id_fkey(id, name, join_code)'
+            ).eq('name', state['name']).execute()
+            seen, result = set(), []
+            for r in (rr.data or []):
+                cr = r.get('classrooms')
+                if cr and isinstance(cr, dict) and cr['id'] not in seen:
+                    seen.add(cr['id'])
+                    # Count members in this classroom
+                    try:
+                        members = sb.table('reviewers').select('id', count='exact').eq(
+                            'classroom_id', cr['id']
+                        ).execute()
+                        cr['member_count'] = members.count if members.count else 0
+                    except Exception:
+                        cr['member_count'] = 0
+                    cr['reviewer_id'] = r['id']
+                    result.append(cr)
+            return result
+        except Exception:
+            return []
+
     with ui.column().classes('w-full max-w-4xl mx-auto p-4 gap-0 review-page'):
 
         # ============================================================
@@ -285,6 +350,9 @@ def review_page():
                 'Join an existing classroom or create a new one. '
                 'Everyone in the same classroom sees each other\'s reviews in real-time.'
             ).style('color: #8888aa; font-size: 13px;')
+
+            # -- My Classrooms (quick-rejoin) --
+            my_classrooms_container = ui.column().classes('w-full gap-2')
 
             ui.separator().style('border-color: #333355;')
 
@@ -305,12 +373,101 @@ def review_page():
                     ).classes('w-full')
                     create_btn = ui.button('Create & Join', icon='add').props('color=primary').classes('w-full')
 
-        # Status
-        status_label = ui.label('').classes('text-sm').style('color: #8888aa;')
+        # Status bar with classroom info + switch button
+        with ui.row().classes('w-full items-center justify-between').style(
+            'min-height: 28px;'
+        ) as status_row:
+            status_label = ui.label('').classes('text-sm').style('color: #8888aa;')
+            switch_btn = ui.button('Switch Classroom', icon='swap_horiz',
+                                   on_click=lambda: _show_lobby()).props(
+                'flat size=sm'
+            ).style('color: #4ecdc4;')
+            switch_btn.set_visibility(False)
 
         # Main review content — hidden until joined
         main_content = ui.column().classes('w-full gap-0')
         main_content.set_visibility(False)
+
+        def _enter_classroom():
+            """Transition from lobby to review content."""
+            classroom_box.set_visibility(False)
+            code = ''
+            if sb and state['classroom_id']:
+                try:
+                    cr = sb.table('classrooms').select('join_code').eq(
+                        'id', state['classroom_id']
+                    ).execute()
+                    if cr.data:
+                        code = cr.data[0]['join_code']
+                except Exception:
+                    pass
+            status_label.text = f'{state["name"]} — {state["classroom_name"]}' + (f' ({code})' if code else '')
+            switch_btn.set_visibility(True)
+            main_content.set_visibility(True)
+            _save_session()
+            _load_others_and_show()
+
+        def _show_lobby():
+            """Show the classroom picker (lobby)."""
+            main_content.set_visibility(False)
+            switch_btn.set_visibility(False)
+            status_label.text = ''
+            classroom_box.set_visibility(True)
+            _refresh_my_classrooms()
+
+        def _refresh_my_classrooms():
+            """Populate the 'My Classrooms' quick-rejoin list."""
+            my_classrooms_container.clear()
+            if not state['name']:
+                # Pre-fill name from session if available
+                saved = app.storage.user.get('review_session')
+                if saved and saved.get('name'):
+                    state['name'] = saved['name']
+                    name_input.value = saved['name']
+
+            classrooms = _get_user_classrooms()
+            if not classrooms:
+                return
+
+            with my_classrooms_container:
+                ui.label('My Classrooms').style(
+                    'color: #4ecdc4; font-weight: 700; font-size: 14px; margin-top: 8px;'
+                )
+                for cr in classrooms:
+                    with ui.row().classes('w-full items-center gap-3 p-3').style(
+                        'background: rgba(78, 205, 196, 0.06); '
+                        'border: 1px solid rgba(78, 205, 196, 0.2); '
+                        'border-radius: 8px;'
+                    ):
+                        ui.html(
+                            '<div style="background:#4ecdc4;color:#1a1a2e;border-radius:50%;'
+                            'width:32px;height:32px;display:flex;align-items:center;'
+                            'justify-content:center;font-weight:700;font-size:14px;'
+                            'flex-shrink:0;">C</div>'
+                        )
+                        with ui.column().classes('flex-grow gap-0'):
+                            ui.label(cr['name']).style(
+                                'color: #e0e0e0; font-weight: 600; font-size: 14px;'
+                            )
+                            with ui.row().classes('gap-2'):
+                                ui.label(f'Code: {cr["join_code"]}').style(
+                                    'color: #8888aa; font-size: 12px;'
+                                )
+                                ui.label(f'{cr["member_count"]} member{"s" if cr["member_count"] != 1 else ""}').style(
+                                    'color: #666; font-size: 12px;'
+                                )
+
+                        def _rejoin(c=cr):
+                            state['classroom_id'] = c['id']
+                            state['classroom_name'] = c['name']
+                            state['reviewer_id'] = c['reviewer_id']
+                            # name already set
+                            _enter_classroom()
+                            ui.notify(f'Rejoined {c["name"]}', type='positive')
+
+                        ui.button('Enter', on_click=_rejoin).props(
+                            'flat size=sm'
+                        ).style('color: #4ecdc4;')
 
         async def do_join():
             name = name_input.value.strip()
@@ -343,10 +500,7 @@ def review_page():
                 state['reviewer_id'] = rr.data[0]['id']
 
             state['name'] = name
-            classroom_box.set_visibility(False)
-            status_label.text = f'{name} — {state["classroom_name"]} ({code})'
-            main_content.set_visibility(True)
-            _load_others_and_show()
+            _enter_classroom()
             ui.notify(f'Joined {state["classroom_name"]}!', type='positive')
 
         async def do_create():
@@ -378,13 +532,17 @@ def review_page():
             }).eq('id', state['reviewer_id']).execute()
 
             state['name'] = name
-            classroom_box.set_visibility(False)
-            status_label.text = f'{name} — {cname} (Code: {code})'
-            main_content.set_visibility(True)
+            _enter_classroom()
             ui.notify(f'Created classroom "{cname}" — share code: {code}', type='positive', timeout=10000)
 
         join_btn.on_click(do_join)
         create_btn.on_click(do_create)
+
+        # -- Auto-rejoin from saved session --
+        if _restore_session():
+            _enter_classroom()
+        else:
+            _refresh_my_classrooms()
 
         # ============================================================
         # REVIEW SECTIONS (inside main_content)

@@ -56,23 +56,35 @@ def dashboard_page():
                         return
 
                     # Find classrooms this user's reviewers belong to
-                    reviewers = sb.table('reviewers').select(
-                        '*, classrooms!reviewers_classroom_id_fkey(id, name, join_code, created_at)'
-                    ).eq('name', user['email'].split('@')[0]).execute()
+                    # Check by email prefix and also by any name stored in review_session
+                    search_names = {user['email'].split('@')[0]}
+                    saved = app.storage.user.get('review_session')
+                    if saved and saved.get('name'):
+                        search_names.add(saved['name'])
 
-                    # Also check by user email pattern in name
                     seen_ids = set()
                     classrooms = []
 
-                    if reviewers.data:
-                        for r in reviewers.data:
+                    for sname in search_names:
+                        reviewers = sb.table('reviewers').select(
+                            'id, classroom_id, classrooms!reviewers_classroom_id_fkey(id, name, join_code, created_at)'
+                        ).eq('name', sname).execute()
+
+                        for r in (reviewers.data or []):
                             cr = r.get('classrooms')
                             if cr and isinstance(cr, dict) and cr.get('id') not in seen_ids:
                                 seen_ids.add(cr['id'])
+                                cr['_reviewer_id'] = r['id']
+                                cr['_reviewer_name'] = sname
+                                # Count members
+                                try:
+                                    mc = sb.table('reviewers').select('id', count='exact').eq(
+                                        'classroom_id', cr['id']
+                                    ).execute()
+                                    cr['member_count'] = mc.count if mc.count else 0
+                                except Exception:
+                                    cr['member_count'] = 0
                                 classrooms.append(cr)
-
-                    # Also find classrooms where user created them
-                    # (created_by references reviewers, not auth users, so we check all)
 
                     if not classrooms:
                         with classrooms_container:
@@ -92,17 +104,31 @@ def dashboard_page():
                                     '<div style="background:#4ecdc4;color:#1a1a2e;border-radius:50%;'
                                     'width:32px;height:32px;display:flex;align-items:center;'
                                     'justify-content:center;font-weight:700;font-size:14px;'
-                                    'flex-shrink:0;">C</div>'
+                                    f'flex-shrink:0;">{cr["member_count"]}</div>'
                                 )
                                 with ui.column().classes('flex-grow gap-0'):
                                     ui.label(cr['name']).style(
                                         'color: #e0e0e0; font-weight: 600; font-size: 14px;'
                                     )
-                                    ui.label(f'Code: {cr["join_code"]}').style(
-                                        'color: #8888aa; font-size: 12px;'
-                                    )
+                                    with ui.row().classes('gap-2'):
+                                        ui.label(f'Code: {cr["join_code"]}').style(
+                                            'color: #8888aa; font-size: 12px;'
+                                        )
+                                        ui.label(
+                                            f'{cr["member_count"]} member{"s" if cr["member_count"] != 1 else ""}'
+                                        ).style('color: #666; font-size: 12px;')
 
-                                ui.button('Open', on_click=lambda: ui.navigate.to('/review')).props(
+                                def _enter(c=cr):
+                                    # Set session so /review auto-joins this classroom
+                                    app.storage.user['review_session'] = {
+                                        'reviewer_id': c['_reviewer_id'],
+                                        'name': c['_reviewer_name'],
+                                        'classroom_id': c['id'],
+                                        'classroom_name': c['name'],
+                                    }
+                                    ui.navigate.to('/review')
+
+                                ui.button('Enter', on_click=_enter).props(
                                     'flat size=sm'
                                 ).style('color: #4ecdc4;')
 
