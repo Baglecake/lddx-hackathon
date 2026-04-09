@@ -1280,6 +1280,24 @@ def main():
 
     print(f'Starting on {host}:{port}')
 
+    # Inject socket.io reconnection config via client-side JS.
+    # Cloudflare's proxy drops idle websockets — aggressive reconnection
+    # and frequent pings keep the connection alive.
+    @app.on_connect
+    def _configure_socketio():
+        ui.run_javascript('''
+            if (window.__socketConfigured) return;
+            window.__socketConfigured = true;
+            const s = window._nicegui_ws;
+            if (s && s.io) {
+                s.io.reconnection(true);
+                s.io.reconnectionAttempts(100);
+                s.io.reconnectionDelay(500);
+                s.io.reconnectionDelayMax(3000);
+                s.io.timeout(120000);
+            }
+        ''')
+
     ui.run(
         title='Local-DDx',
         port=port,
@@ -1288,15 +1306,6 @@ def main():
         reload=False,
         favicon='🩺',
         storage_secret=os.environ.get('STORAGE_SECRET', 'lddx-dev-secret-change-me'),
-        socket_io_js_options='{'
-            '"reconnection": true, '
-            '"reconnectionAttempts": 100, '
-            '"reconnectionDelay": 500, '
-            '"reconnectionDelayMax": 3000, '
-            '"timeout": 120000, '
-            '"pingTimeout": 120000, '
-            '"pingInterval": 5000'
-        '}',
     )
 
 
