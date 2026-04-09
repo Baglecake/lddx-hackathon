@@ -548,42 +548,64 @@ def review_page():
         others_containers = {}
 
         def _load_others_and_show():
-            """Load and display other reviewers' verdicts."""
+            """Load and display other reviewers' verdicts (batch-fetched)."""
             if not sb or not state['classroom_id']:
                 return
 
-            # Failure verdicts
+            # Batch-fetch ALL verdicts for this classroom in 2 queries (not per-entry)
+            try:
+                all_failures = sb.table('failure_verdicts').select(
+                    '*, reviewers(name)'
+                ).eq('classroom_id', state['classroom_id']).neq(
+                    'reviewer_id', state['reviewer_id']
+                ).execute().data or []
+            except Exception:
+                all_failures = []
+
+            try:
+                all_synonyms = sb.table('synonym_verdicts').select(
+                    '*, reviewers(name)'
+                ).eq('classroom_id', state['classroom_id']).neq(
+                    'reviewer_id', state['reviewer_id']
+                ).execute().data or []
+            except Exception:
+                all_synonyms = []
+
+            # Index by key for O(1) lookup
+            fail_by_gt = {}
+            for o in all_failures:
+                gt = o.get('ground_truth', '')
+                fail_by_gt.setdefault(gt, []).append(o)
+
+            syn_by_canonical = {}
+            for o in all_synonyms:
+                ct = o.get('canonical_term', '')
+                syn_by_canonical.setdefault(ct, []).append(o)
+
+            # Populate failure verdict containers
             for item in REVIEW_MISMATCHES:
                 gt = item['ground_truth']
                 key = f'fail_{gt}'
                 if key in others_containers:
-                    others = _fetch_others(
-                        sb, state['classroom_id'], state['reviewer_id'],
-                        'failure_verdicts', 'ground_truth', gt
-                    )
                     container = others_containers[key]
                     container.clear()
                     with container:
-                        for o in others:
+                        for o in fail_by_gt.get(gt, []):
                             rname = o.get('reviewers', {}).get('name', '?') if isinstance(o.get('reviewers'), dict) else '?'
                             v = o.get('verdict', '')
                             css = 'others-match' if v == 'match' else 'others-no' if v == 'not_match' else 'others-unsure'
                             vlabel = 'Match' if v == 'match' else 'No' if v == 'not_match' else '?'
                             ui.html(f'<span class="others-pill {css}">{rname}: {vlabel}</span>')
 
-            # Synonym additions
+            # Populate synonym verdict containers
             for cat, entries in SYN_CATEGORIES.items():
                 for canonical, _ in entries:
                     key = f'syn_{canonical}'
                     if key in others_containers:
-                        others = _fetch_others(
-                            sb, state['classroom_id'], state['reviewer_id'],
-                            'synonym_verdicts', 'canonical_term', canonical
-                        )
                         container = others_containers[key]
                         container.clear()
                         with container:
-                            for o in others:
+                            for o in syn_by_canonical.get(canonical, []):
                                 rname = o.get('reviewers', {}).get('name', '?') if isinstance(o.get('reviewers'), dict) else '?'
                                 added = o.get('alias_to_add', '')
                                 flag = o.get('flag_issue', '')

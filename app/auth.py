@@ -20,6 +20,12 @@ def get_current_user() -> Optional[Dict]:
     if not token:
         return None
 
+    # Return cached user info if available (avoids Supabase call on every page load)
+    cached_id = app.storage.user.get('user_id')
+    cached_email = app.storage.user.get('user_email')
+    if cached_id and cached_email:
+        return {'id': cached_id, 'email': cached_email}
+
     sb = get_supabase()
     if not sb:
         return None
@@ -27,6 +33,9 @@ def get_current_user() -> Optional[Dict]:
     try:
         user_resp = sb.auth.get_user(token)
         if user_resp and user_resp.user:
+            # Cache for future calls
+            app.storage.user['user_id'] = str(user_resp.user.id)
+            app.storage.user['user_email'] = user_resp.user.email
             return {
                 'id': user_resp.user.id,
                 'email': user_resp.user.email,
@@ -34,6 +43,8 @@ def get_current_user() -> Optional[Dict]:
     except Exception:
         # Token expired or invalid
         app.storage.user.pop('access_token', None)
+        app.storage.user.pop('user_id', None)
+        app.storage.user.pop('user_email', None)
 
     return None
 
