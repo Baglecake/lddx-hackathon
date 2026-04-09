@@ -7,3 +7,4 @@ results/
 .env
 venv/
 .venv/
+Local-DDx-*.xlsx
