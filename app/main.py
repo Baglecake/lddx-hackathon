@@ -426,7 +426,7 @@ def landing():
                 'HSIL Hackathon 2026 — Harvard School of Public Health'
             ).style('color: #555577; font-size: 13px; text-align: center;')
 
-            with ui.row().classes('gap-4 mt-4'):
+            with ui.row().classes('gap-4 mt-4 justify-center flex-wrap'):
                 ui.button('Run Pipeline', icon='play_arrow', on_click=lambda: ui.navigate.to('/pipeline')).props(
                     'size=lg color=primary'
                 )
