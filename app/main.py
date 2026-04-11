@@ -536,14 +536,17 @@ def pipeline_page():
                     models = ollama_models_cache['value']
                     url_input.enable()
                 models_list['value'] = models
-                conservative_select.options = models
-                innovative_select.options = models
+                # NiceGUI rejects empty options with non-matching value.
                 if models:
-                    conservative_select.value = models[0]
-                    innovative_select.value = models[0]
+                    new_options = list(models)
+                    new_value = models[0]
                 else:
-                    conservative_select.value = ''
-                    innovative_select.value = ''
+                    new_options = ['(no models available)']
+                    new_value = new_options[0]
+                conservative_select.options = new_options
+                innovative_select.options = new_options
+                conservative_select.value = new_value
+                innovative_select.value = new_value
                 conservative_select.update()
                 innovative_select.update()
 
@@ -558,15 +561,21 @@ def pipeline_page():
             # -- Model Selection --
             ui.label('Models').classes('text-sm font-semibold').style('color: #8888aa; letter-spacing: 0.05em;')
 
+            # NiceGUI rejects value='' with empty options — use a placeholder
+            # entry when no models are available so the select can render.
+            _has_models = bool(models_list['value'])
+            _select_options = models_list['value'] if _has_models else ['(no models available)']
+            _select_value = _select_options[0]
+
             conservative_select = ui.select(
-                options=models_list['value'],
-                value=models_list['value'][0] if models_list['value'] else '',
+                options=_select_options,
+                value=_select_value,
                 label='Conservative (T=0.3)',
             ).classes('w-full')
 
             innovative_select = ui.select(
-                options=models_list['value'],
-                value=models_list['value'][0] if models_list['value'] else '',
+                options=_select_options,
+                value=_select_value,
                 label='Innovative (T=0.8)',
             ).classes('w-full')
 
@@ -1070,15 +1079,27 @@ def pipeline_page():
         sess['last_result'] = result
 
         # ---- Always save results (even if browser disconnected) ----
-        # 1. Auto-export to JSON file
+        # 1. Auto-export to JSON file (wrapped as a case_runs row so the
+        #    /history page can read it directly when running offline)
         if result and 'error' not in result:
             try:
                 import json
                 export_dir = os.path.join(os.path.dirname(__file__), '..', 'exports')
                 os.makedirs(export_dir, exist_ok=True)
                 auto_path = os.path.join(export_dir, f'lddx_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json')
+                record = {
+                    'case_name': 'demo_case',
+                    'patient_info': case_text,
+                    'specialists': analysis.get('specialists', []),
+                    'pipeline_mode': mode,
+                    'backend': backend,
+                    'model_name': conservative,
+                    'duration_seconds': result.get('total_duration', 0),
+                    'created_at': datetime.now().isoformat(),
+                    'result': result,
+                }
                 with open(auto_path, 'w') as f:
-                    json.dump(result, f, indent=2, default=str)
+                    json.dump(record, f, indent=2, default=str)
                 print(f'[LDDx] Auto-saved results to {auto_path}')
             except Exception as e:
                 print(f'[LDDx] Auto-save failed: {e}')
